@@ -60,8 +60,21 @@ export default function Attendance() {
   // When employee changes — load their schedule
   useEffect(() => {
     if (!selectedEmp) return
+
+    // First try from loaded employees list
     const emp = employees.find(e => e.id === selectedEmp)
-    setEmpSchedule(emp?.work_schedule || 'standard')
+    if (emp) {
+      setEmpSchedule(emp.work_schedule || 'standard')
+      return
+    }
+
+    // Fallback: fetch directly if not in list yet
+    fetch(`/api/employees/${selectedEmp}`)
+      .then(r => r.json())
+      .then(d => {
+        setEmpSchedule(d?.work_schedule || 'standard')
+      })
+      .catch(() => setEmpSchedule('standard'))
   }, [selectedEmp, employees])
 
   // Load holidays
