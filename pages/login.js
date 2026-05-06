@@ -407,7 +407,7 @@ export default function Login() {
               </div>
               <div>
                 <div className="stat-num">v1.0</div>
-                <div className="stat-lbl">Phase 1</div>
+                <div className="stat-lbl">Phase 2</div>
               </div>
             </div>
           </div>
@@ -494,7 +494,7 @@ export default function Login() {
               </div>
             </div>
 
-            <div className="version">HRMS · Phase 1 · v1.0</div>
+            <div className="version">HRMS · Phase 2 · v1.0</div>
           </div>
         </div>
 
