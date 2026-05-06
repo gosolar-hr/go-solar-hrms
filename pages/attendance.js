@@ -185,12 +185,12 @@ export default function Attendance() {
         const is2nd4th = isNthSaturday(date, dow, [2, 4])
         const isHoliday = holidayDates.includes(date)
 
-        const isWO =
+        const isWeekOff =
           empSchedule === '7day' ? false :
-          empSchedule === '6day' ? isSun :
-          (isSun || is2nd4th)
+          empSchedule === '6day' ? dow === 0 :
+          (dow === 0 || isNthSaturday(date, dow, [2, 4]))
 
-        return !isWO && !isHoliday
+        return !isWeekOff && !isHoliday
       })
       .map(({ date }) => date)
 
@@ -244,12 +244,12 @@ export default function Attendance() {
     const is2nd4th = isNthSaturday(date, dow, [2, 4])
     const isHoliday = holidayDates.includes(date)
 
-    const isWO =
+    const isWeekOff =
       empSchedule === '7day' ? false :
-      empSchedule === '6day' ? isSun :
-      (isSun || is2nd4th)
+      empSchedule === '6day' ? dow === 0 :
+      (dow === 0 || isNthSaturday(date, dow, [2, 4]))
 
-    if (isWO || isHoliday) return
+    if (isWeekOff || isHoliday) return
 
     const current  = calData[date]?.status || null
     const editable = ['P', 'MO', 'AO', 'A', 'PL']
@@ -629,12 +629,12 @@ export default function Attendance() {
                     const is2nd4th = isNthSaturday(date, dow, [2,4])
                     const isHol    = holidays.map(h=>h.date).includes(date)
 
-                    const isWO =
+                    const isWeekOff =
                       empSchedule === '7day'  ? false :
-                      empSchedule === '6day'  ? isSun :
-                      (isSun || is2nd4th)
+                      empSchedule === '6day'  ? dow === 0 :
+                      (dow === 0 || isNthSaturday(date, dow, [2,4]))
 
-                    const isLocked = isWO || isHol
+                    const isLocked = isWeekOff || isHol
                     const _today   = new Date()
                     const isToday  = date === `${_today.getFullYear()}-${String(_today.getMonth()+1).padStart(2,'0')}-${String(_today.getDate()).padStart(2,'0')}`
                     const isSaved  = savedDate === date

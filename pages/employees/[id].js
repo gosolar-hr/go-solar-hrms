@@ -311,10 +311,14 @@ export default function EmployeeProfile() {
                   </div>
                   <div className="form-group full">
                     <label>Work Schedule</label>
-                    <select name="work_schedule" value={form.work_schedule || 'standard'} onChange={onChange}>
+                    <select
+                      name="work_schedule"
+                      value={form.work_schedule || 'standard'}
+                      onChange={onChange}
+                    >
                       <option value="standard">Standard — Mon–Sat, 2nd & 4th Sat off, Sun off</option>
-                      <option value="6day">6 Days — Mon to Sat, all Sundays off (no Sat offs)</option>
-                      <option value="7day">7 Days — All days working (no forced week offs)</option>
+                      <option value="6day">6 Days — Mon to Sat, Sundays off only</option>
+                      <option value="7day">7 Days — All days working, no forced week offs</option>
                     </select>
                     <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:4 }}>
                       Controls which days are treated as Week Off for this employee
@@ -351,8 +355,8 @@ export default function EmployeeProfile() {
                 <FieldRow
                   label="Work Schedule"
                   value={
-                    emp.work_schedule === '6day'  ? '6 Days — Mon to Sat (no Sat offs)' :
-                    emp.work_schedule === '7day'  ? '7 Days — All days working' :
+                    emp.work_schedule === '6day' ? '6 Days — Mon to Sat (no Sat offs)' :
+                    emp.work_schedule === '7day' ? '7 Days — All days (no week offs)' :
                     'Standard — Mon–Sat, 2nd & 4th Sat off'
                   }
                 />
