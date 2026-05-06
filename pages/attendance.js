@@ -645,19 +645,21 @@ export default function Attendance() {
                         onClick={() => !isLocked && cycleStatus(date, dow)}
                         style={{
                           borderRadius : 10,
-                          border       : isSaved
-                            ? '2px solid #12B76A'
-                            : saving === date
-                              ? '2px solid #2E90FA'
-                              : `1.5px solid ${cfg ? cfg.border : '#E4E7EC'}`,
-                          background   : cfg ? cfg.bg : isLocked ? '#F8F9FB' : '#fff',
+                          border       : isLocked
+                            ? '1.5px solid #E4E7EC'
+                            : isSaved
+                              ? '2px solid #12B76A'
+                              : saving === date
+                                ? '2px solid #2E90FA'
+                                : `1.5px solid ${cfg ? cfg.border : '#E4E7EC'}`,
+                          background   : isLocked ? '#F8F9FB' : (cfg ? cfg.bg : '#fff'),
                           padding      : '8px 6px',
                           cursor       : isLocked ? 'default' : 'pointer',
                           position     : 'relative',
                           minHeight    : 64,
                           transition   : 'all 0.15s',
                           boxShadow    : isToday ? '0 0 0 2px #F97316' : 'none',
-                          opacity      : isLocked && !status ? 0.6 : 1,
+                          opacity      : isLocked ? 0.6 : 1,
                         }}
                       >
                         {/* Day number */}
@@ -670,8 +672,8 @@ export default function Attendance() {
                           {day}
                         </div>
 
-                        {/* Status badge */}
-                        {status && (
+                        {/* Status badge — don't show on locked days */}
+                        {status && !isLocked && (
                           <div style={{
                             fontSize  : 10,
                             fontWeight: 700,
@@ -717,8 +719,8 @@ export default function Attendance() {
                           }} title={`Late: ${lateSlab*100}%`} />
                         )}
 
-                        {/* Week off / Holiday label */}
-                        {isLocked && !status && (
+                        {/* Week off / Holiday label — always show on locked days */}
+                        {isLocked && (
                           <div style={{ fontSize:9, color:'#98A2B3', marginTop:2 }}>
                             {isHol ? 'H' : 'WO'}
                           </div>
