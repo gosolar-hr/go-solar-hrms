@@ -95,7 +95,7 @@ export default function Layout({ children }) {
 
         <div className="sidebar-footer">
           <div style={{ marginBottom: 10, fontSize: 12, color: 'var(--text-muted)' }}>
-            HRMS · Phase 1 · v1.0
+            HRMS · Phase 2 · v1.0
           </div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, marginBottom: 12 }}>
             Made by{' '}
