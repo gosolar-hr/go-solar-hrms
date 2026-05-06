@@ -119,9 +119,8 @@ export default function Attendance() {
     const days = []
     const daysInMonth = new Date(year, month, 0).getDate()
     for (let d = 1; d <= daysInMonth; d++) {
-      const date    = new Date(year, month - 1, d)
-      const dateStr = date.toISOString().split('T')[0]
-      days.push({ date: dateStr, day: d, dow: date.getDay() })
+      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+      days.push({ date: dateStr, day: d, dow: new Date(year, month - 1, d).getDay() })
     }
     return days
   }
@@ -636,7 +635,8 @@ export default function Attendance() {
                       (isSun || is2nd4th)
 
                     const isLocked = isWO || isHol
-                    const isToday  = date === new Date().toISOString().split('T')[0]
+                    const _today   = new Date()
+                    const isToday  = date === `${_today.getFullYear()}-${String(_today.getMonth()+1).padStart(2,'0')}-${String(_today.getDate()).padStart(2,'0')}`
                     const isSaved  = savedDate === date
 
                     return (
