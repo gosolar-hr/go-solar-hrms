@@ -61,23 +61,27 @@ export default async function handler(req, res) {
     let present_days = 0, absent_days = 0, late_marks = 0
 
     for (const d of allDays || []) {
-      const s = d.status?.toUpperCase()
-      if (['W/O', 'WO', 'H'].includes(s)) continue
+      const s = (d.status || '').toUpperCase().trim()
 
       if (s === 'P' || s === 'P:P') {
         present_days++
         if (d.salary_cut > 0) late_marks++
       }
       else if (s === 'PL') {
-        present_days++
+        present_days++  // paid leave = full present for salary
       }
-      else if (s === 'MO' || s === 'AO' || s === 'P:A' || s === 'A:P') {
+      else if (s === 'MO' || s === 'AO') {
+        present_days += 0.5
+        absent_days  += 0.5
+      }
+      else if (s === 'P:A' || s === 'A:P') {
         present_days += 0.5
         absent_days  += 0.5
       }
       else if (s === 'A' || s === 'A:A' || s === 'LWP' || s === 'LOP') {
         absent_days++
       }
+      // W/O, H, WO → skip, don't count
     }
 
     await supabaseAdmin

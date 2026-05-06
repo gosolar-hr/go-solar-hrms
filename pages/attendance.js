@@ -122,10 +122,22 @@ export default function Attendance() {
   const days   = getDaysInMonth()
   const offset = getFirstDayOffset()
 
+  const normalizeStatus = (status) => {
+    if (!status) return status
+    // Normalize biometric codes to clean codes for manual entry
+    if (status === 'P:P') return 'P'
+    if (status === 'A:A') return 'A'
+    return status
+  }
+
   // FIX: updateDay now shows save confirmation tick
   const updateDay = async (date, field, value) => {
     const current = calData[date] || { status: null, late_slab: 0, remark: '' }
-    const updated = { ...current, [field]: value }
+
+    // Normalize status when saving manually
+    const normalizedValue = field === 'status' ? normalizeStatus(value) : value
+    const updated = { ...current, [field]: normalizedValue }
+
     setCalData(prev => ({ ...prev, [date]: updated }))
 
     setSaving(date)
@@ -231,26 +243,51 @@ export default function Attendance() {
   }
 
   const summary = Object.entries(calData).reduce((acc, [date, val]) => {
-    switch(val?.status) {
-      case 'P':
-      case 'P:P':  acc.present++;  break
-      case 'PL':   acc.pl++;       break
-      case 'MO':   acc.mo++;       break
-      case 'AO':   acc.ao++;       break
-      case 'A':
-      case 'A:A':  acc.absent++;   break
-      case 'P:A':
-      case 'A:P':
-        acc.present += 0.5
-        acc.absent  += 0.5
-        break
-      case 'H':    acc.holiday++;  break
-      case 'WO':
-      case 'W/O':  acc.wo++;       break
+    const s = val?.status || ''
+
+    // Present — covers both manual (P) and biometric (P:P)
+    if (s === 'P' || s === 'P:P') {
+      acc.present++
     }
-    if (val?.late_slab > 0) acc.late++
+    // Paid Leave
+    else if (s === 'PL') {
+      acc.pl++
+    }
+    // Morning Off — half day
+    else if (s === 'MO') {
+      acc.mo++
+      acc.present += 0.5  // counts as 0.5 present
+    }
+    // Afternoon Off — half day
+    else if (s === 'AO') {
+      acc.ao++
+      acc.present += 0.5  // counts as 0.5 present
+    }
+    // Absent — covers A, A:A, LWP, LOP
+    else if (s === 'A' || s === 'A:A' || s === 'LWP' || s === 'LOP') {
+      acc.absent++
+    }
+    // Half day from biometric (P:A or A:P)
+    else if (s === 'P:A' || s === 'A:P') {
+      acc.present += 0.5
+      acc.absent  += 0.5
+    }
+    // Holiday
+    else if (s === 'H') {
+      acc.holiday++
+    }
+    // Week Off — covers both WO and W/O
+    else if (s === 'WO' || s === 'W/O') {
+      acc.wo++
+    }
+
+    // Late marks — any present day with a slab
+    if (val?.late_slab > 0 && (s === 'P' || s === 'P:P')) {
+      acc.late++
+    }
+
     return acc
-  }, { present:0, pl:0, mo:0, ao:0, absent:0, holiday:0, wo:0, late:0 })
+  }, { present: 0, pl: 0, mo: 0, ao: 0, absent: 0, holiday: 0, wo: 0, late: 0 })
 
   const onImportCSV = async (e) => {
     const file = e.target.files[0]

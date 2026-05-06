@@ -47,13 +47,20 @@ export default async function handler(req, res) {
     // ── DB OVERRIDE ──────────────────────────────────────────
     // Regardless of what biometric says, if the date is a
     // declared week off or holiday → force correct status
-    let finalStatus = status.trim().toUpperCase()
+    let mapped = status.trim().toUpperCase()
 
     if (weekOffDates.has(date)) {
-      finalStatus = 'W/O'   // Sunday, 2nd Sat, 4th Sat → always W/O
+      mapped = 'W/O'   // Sunday, 2nd Sat, 4th Sat → always W/O
     } else if (holidayDates.has(date)) {
-      finalStatus = 'H'     // Declared holiday → always H
+      mapped = 'H'     // Declared holiday → always H
     }
+
+    const normalizeStatus = (s) => {
+      if (s === 'P:P') return 'P'
+      if (s === 'A:A') return 'A'
+      return s
+    }
+    const finalStatus = normalizeStatus(mapped)
     // ─────────────────────────────────────────────────────────
 
     const slab = VALID_SLABS.has(parseFloat(late_slab))
@@ -85,12 +92,20 @@ export default async function handler(req, res) {
     if (s === 'P' || s === 'P:P') {
       grouped[emp_code].present_days++
       if (slab > 0) grouped[emp_code].late_marks++
-    } else if (s === 'PL') {
-      grouped[emp_code].present_days++  // Paid leave = present for salary
-    } else if (s === 'A' || s === 'A:A' || s === 'LWP' || s === 'LOP') {
-      grouped[emp_code].absent_days++
-    } else if (s === 'P:A' || s === 'A:P') {
+    }
+    else if (s === 'PL') {
+      grouped[emp_code].present_days++
+    }
+    else if (s === 'MO' || s === 'AO') {
       grouped[emp_code].present_days += 0.5
+      grouped[emp_code].absent_days  += 0.5
+    }
+    else if (s === 'P:A' || s === 'A:P') {
+      grouped[emp_code].present_days += 0.5
+      grouped[emp_code].absent_days  += 0.5
+    }
+    else if (s === 'A' || s === 'A:A' || s === 'LWP' || s === 'LOP') {
+      grouped[emp_code].absent_days++
     }
   }
 
