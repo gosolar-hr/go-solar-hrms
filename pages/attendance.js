@@ -38,7 +38,8 @@ export default function Attendance() {
   const [calData,      setCalData]      = useState({})
   const [loading,      setLoading]      = useState(false)
   const [saving,       setSaving]       = useState(null)
-  const [savedDate,    setSavedDate]    = useState(null)   // tracks last saved date for confirmation
+  const [savedDate,    setSavedDate]    = useState(null)
+  const [dbSummary,    setDbSummary]    = useState({ present:0, absent:0, late:0, pl:0, mo:0, ao:0, holiday:0, wo:0 })
   const [alert,        setAlert]        = useState(null)
   const [importing,    setImporting]    = useState(false)
   const [holidays,     setHolidays]     = useState([])
@@ -114,6 +115,27 @@ export default function Attendance() {
           })
         }
         setCalData(map)
+
+        // Count from DB data directly — permanent accurate summary
+        let present = 0, absent = 0, late = 0, pl = 0, mo = 0, ao = 0, holiday = 0, wo = 0
+
+        if (Array.isArray(d)) {
+          d.forEach(row => {
+            const s = (row.status || '').toUpperCase().trim()
+            if (s === 'P' || s === 'P:P') {
+              present++
+              if (row.salary_cut > 0) late++
+            }
+            else if (s === 'PL')              { pl++;      present++ }
+            else if (s === 'MO')              { mo++;      present += 0.5 }
+            else if (s === 'AO')              { ao++;      present += 0.5 }
+            else if (s === 'A' || s === 'A:A' || s === 'LWP') { absent++ }
+            else if (s === 'P:A' || s === 'A:P') { present += 0.5; absent += 0.5 }
+            else if (s === 'H')               { holiday++ }
+            else if (s === 'WO' || s === 'W/O') { wo++ }
+          })
+        }
+        setDbSummary({ present, absent, late, pl, mo, ao, holiday, wo })
         setLoading(false)
       })
       .catch(() => {
@@ -184,6 +206,22 @@ export default function Attendance() {
       // Show saved tick for 2 seconds then clear
       setSavedDate(date)
       setTimeout(() => setSavedDate(null), 2000)
+
+      // Refresh DB summary from updated calData
+      const updatedData = { ...calData, [date]: updated }
+      let present = 0, absent = 0, late = 0, pl = 0, mo = 0, ao = 0, holiday = 0, wo = 0
+      Object.values(updatedData).forEach(val => {
+        const s = (val?.status || '').toUpperCase().trim()
+        if (s === 'P' || s === 'P:P') { present++; if (val.late_slab > 0) late++ }
+        else if (s === 'PL')          { pl++;      present++ }
+        else if (s === 'MO')          { mo++;      present += 0.5 }
+        else if (s === 'AO')          { ao++;      present += 0.5 }
+        else if (s === 'A' || s === 'A:A' || s === 'LWP') { absent++ }
+        else if (s === 'P:A' || s === 'A:P') { present += 0.5; absent += 0.5 }
+        else if (s === 'H')           { holiday++ }
+        else if (s === 'WO' || s === 'W/O') { wo++ }
+      })
+      setDbSummary({ present, absent, late, pl, mo, ao, holiday, wo })
     }
   }
 
@@ -238,6 +276,16 @@ export default function Attendance() {
     if (!res.ok) {
       setAlert({ type:'error', msg: data.error })
       return
+    }
+
+    // Update summary from bulk API response
+    if (data.present_days !== undefined) {
+      setDbSummary(prev => ({
+        ...prev,
+        present : data.present_days,
+        absent  : data.absent_days  || 0,
+        late    : data.late_marks   || 0,
+      }))
     }
 
     setAlert({
@@ -473,14 +521,14 @@ export default function Attendance() {
           {/* Summary strip */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(8,1fr)', gap:10, marginBottom:16 }}>
             {[
-              { label:'Present',       value: summary.present,  color:'#12B76A' },
-              { label:'Paid Leave',    value: summary.pl,        color:'#2E90FA' },
-              { label:'Morning Off',   value: summary.mo,        color:'#F79009' },
-              { label:'Afternoon Off', value: summary.ao,        color:'#F79009' },
-              { label:'Absent/LWP',    value: summary.absent,   color:'#F04438' },
-              { label:'Holiday',       value: summary.holiday,  color:'#7F56D9' },
-              { label:'Week Off',      value: summary.wo,       color:'#667085' },
-              { label:'Late Marks',    value: summary.late,      color:'#F97316' },
+              { label:'Present',       value: dbSummary.present,  color:'#12B76A' },
+              { label:'Paid Leave',    value: dbSummary.pl || 0,  color:'#2E90FA' },
+              { label:'Morning Off',   value: dbSummary.mo || 0,  color:'#F79009' },
+              { label:'Afternoon Off', value: dbSummary.ao || 0,  color:'#F79009' },
+              { label:'Absent/LWP',    value: dbSummary.absent,   color:'#F04438' },
+              { label:'Holiday',       value: dbSummary.holiday || 0, color:'#7F56D9' },
+              { label:'Week Off',      value: dbSummary.wo || 0,  color:'#667085' },
+              { label:'Late Marks',    value: dbSummary.late,     color:'#F97316' },
             ].map(s => (
               <div key={s.label} className="card" style={{ padding:'12px 10px', borderTop:`3px solid ${s.color}` }}>
                 <div style={{ fontSize:10, fontWeight:600, color:'#98A2B3',

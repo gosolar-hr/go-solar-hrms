@@ -11,13 +11,17 @@ export default async function handler(req, res) {
   }
 
   // Upsert all days in one DB call
-  const rows = dates.map(date => ({
-    employee_id,
-    date,
-    status     : status || 'A',
-    salary_cut : 0,
-    remark     : null,
-  }))
+  const rows = dates.map(date => {
+    const dow      = new Date(date).getDay()
+    const isSunday = dow === 0
+    return {
+      employee_id,
+      date,
+      status     : (status === 'A' || status === 'P') && isSunday ? 'W/O' : (status || 'A'),
+      salary_cut : 0,
+      remark     : null,
+    }
+  })
 
   const { error: detErr } = await supabaseAdmin
     .from('attendance_details')
