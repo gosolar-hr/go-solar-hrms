@@ -3,7 +3,7 @@ import { supabaseAdmin } from '../../../lib/supabase'
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  const { employee_id, month, year, dates, status } = req.body
+  const { employee_id, month, year, dates, status, work_schedule } = req.body
   // dates = ['2026-04-01', '2026-04-02', ...]
 
   if (!employee_id || !dates?.length || !month || !year) {

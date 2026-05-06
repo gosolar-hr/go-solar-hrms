@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import Layout from '../components/Layout'
+import { getWeekOffDatesSync } from '../lib/weekoffs'
 
 const MONTHS = ['January','February','March','April','May','June',
                 'July','August','September','October','November','December']
@@ -43,6 +44,7 @@ export default function Attendance() {
   const [holidays,     setHolidays]     = useState([])
   const [showHoliday,  setShowHoliday]  = useState(false)
   const [newHoliday,   setNewHoliday]   = useState({ date:'', name:'' })
+  const [empSchedule,  setEmpSchedule]  = useState('standard')
   const fileRef     = useRef(null)
   // FIX: use a ref to track the current fetch request
   // so stale responses from previous employee are ignored
@@ -54,6 +56,13 @@ export default function Attendance() {
       if (Array.isArray(d)) setEmployees(d)
     })
   }, [])
+
+  // When employee changes — load their schedule
+  useEffect(() => {
+    if (!selectedEmp) return
+    const emp = employees.find(e => e.id === selectedEmp)
+    setEmpSchedule(emp?.work_schedule || 'standard')
+  }, [selectedEmp, employees])
 
   // Load holidays
   const loadHolidays = () =>
@@ -173,9 +182,16 @@ export default function Attendance() {
 
     const workingDays = days
       .filter(({ date, dow }) => {
-        const isWeekOff = dow === 0 || isNthSaturday(date, dow, [2, 4])
+        const isSun    = dow === 0
+        const is2nd4th = isNthSaturday(date, dow, [2, 4])
         const isHoliday = holidayDates.includes(date)
-        return !isWeekOff && !isHoliday
+
+        const isWO =
+          empSchedule === '7day' ? false :
+          empSchedule === '6day' ? isSun :
+          (isSun || is2nd4th)
+
+        return !isWO && !isHoliday
       })
       .map(({ date }) => date)
 
@@ -224,9 +240,17 @@ export default function Attendance() {
 
   const cycleStatus = (date, dow) => {
     const holidayDates = holidays.map(h => h.date)
-    const isWeekOff    = dow === 0 || isNthSaturday(date, dow, [2, 4])
-    const isHoliday    = holidayDates.includes(date)
-    if (isWeekOff || isHoliday) return
+
+    const isSun    = dow === 0
+    const is2nd4th = isNthSaturday(date, dow, [2, 4])
+    const isHoliday = holidayDates.includes(date)
+
+    const isWO =
+      empSchedule === '7day' ? false :
+      empSchedule === '6day' ? isSun :
+      (isSun || is2nd4th)
+
+    if (isWO || isHoliday) return
 
     const current  = calData[date]?.status || null
     const editable = ['P', 'MO', 'AO', 'A', 'PL']
@@ -605,7 +629,13 @@ export default function Attendance() {
                     const isSun    = dow === 0
                     const is2nd4th = isNthSaturday(date, dow, [2,4])
                     const isHol    = holidays.map(h=>h.date).includes(date)
-                    const isLocked = isSun || is2nd4th || isHol
+
+                    const isWO =
+                      empSchedule === '7day'  ? false :
+                      empSchedule === '6day'  ? isSun :
+                      (isSun || is2nd4th)
+
+                    const isLocked = isWO || isHol
                     const isToday  = date === new Date().toISOString().split('T')[0]
                     const isSaved  = savedDate === date
 
@@ -690,7 +720,7 @@ export default function Attendance() {
                         {/* Week off / Holiday label */}
                         {isLocked && !status && (
                           <div style={{ fontSize:9, color:'#98A2B3', marginTop:2 }}>
-                            {isSun || is2nd4th ? 'WO' : 'H'}
+                            {isHol ? 'H' : 'WO'}
                           </div>
                         )}
                       </div>

@@ -309,6 +309,17 @@ export default function EmployeeProfile() {
                       <option value="other">Other</option>
                     </select>
                   </div>
+                  <div className="form-group full">
+                    <label>Work Schedule</label>
+                    <select name="work_schedule" value={form.work_schedule || 'standard'} onChange={onChange}>
+                      <option value="standard">Standard — Mon–Sat, 2nd & 4th Sat off, Sun off</option>
+                      <option value="6day">6 Days — Mon to Sat, all Sundays off (no Sat offs)</option>
+                      <option value="7day">7 Days — All days working (no forced week offs)</option>
+                    </select>
+                    <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:4 }}>
+                      Controls which days are treated as Week Off for this employee
+                    </div>
+                  </div>
                 </div>
                 <div className="flex gap-8 mt-16">
                   <button className="btn btn-primary btn-sm"
@@ -337,6 +348,14 @@ export default function EmployeeProfile() {
                 <FieldRow label="Gender"
                   value={emp.gender === 'female' ? 'Female'
                        : emp.gender === 'other'  ? 'Other' : 'Male'} />
+                <FieldRow
+                  label="Work Schedule"
+                  value={
+                    emp.work_schedule === '6day'  ? '6 Days — Mon to Sat (no Sat offs)' :
+                    emp.work_schedule === '7day'  ? '7 Days — All days working' :
+                    'Standard — Mon–Sat, 2nd & 4th Sat off'
+                  }
+                />
                 <button className="btn btn-outline btn-sm mt-16"
                   onClick={() => setEditing('personal')}>
                   ✏ Edit Personal Details

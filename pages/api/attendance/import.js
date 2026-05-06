@@ -16,13 +16,19 @@ export default async function handler(req, res) {
   // Fetch active employees
   const { data: employees, error: empErr } = await supabaseAdmin
     .from('employees')
-    .select('id, emp_code, name')
+    .select('id, emp_code, name, work_schedule')
     .eq('is_active', true)
 
   if (empErr) return res.status(500).json({ error: empErr.message })
 
-  const empMap = {}
-  employees.forEach(e => { if (e.emp_code) empMap[e.emp_code] = e.id })
+  const empMap      = {}
+  const scheduleMap = {}
+  employees.forEach(e => {
+    if (e.emp_code) {
+      empMap[e.emp_code]      = e.id
+      scheduleMap[e.emp_code] = e.work_schedule || 'standard'
+    }
+  })
 
   // Late mark slabs per Go Solar policy:
   // 0.0 = No deduction (present on time or within grace period 9:30-9:45)
@@ -47,12 +53,26 @@ export default async function handler(req, res) {
     // ── DB OVERRIDE ──────────────────────────────────────────
     // Regardless of what biometric says, if the date is a
     // declared week off or holiday → force correct status
+    const schedule = scheduleMap[emp_code] || 'standard'
+    const dObj     = new Date(date)
+    const dow      = dObj.getDay()
+
+    // Check if this date is a week off for THIS employee
+    const isSunday = dow === 0
+    const satNum   = dow === 6 ? Math.ceil(dObj.getDate() / 7) : 0
+    const is2nd4th = [2, 4].includes(satNum)
+
+    const isWO =
+      schedule === '7day' ? false :
+      schedule === '6day' ? isSunday :
+      (isSunday || is2nd4th)
+
     let mapped = status.trim().toUpperCase()
 
-    if (weekOffDates.has(date)) {
-      mapped = 'W/O'   // Sunday, 2nd Sat, 4th Sat → always W/O
+    if (isWO) {
+      mapped = 'W/O'
     } else if (holidayDates.has(date)) {
-      mapped = 'H'     // Declared holiday → always H
+      mapped = 'H'
     }
 
     const normalizeStatus = (s) => {
@@ -145,7 +165,6 @@ export default async function handler(req, res) {
     message      : `Attendance imported for ${results.length} employees`,
     month,
     year,
-    week_offs    : [...weekOffDates].sort(),
     holidays     : [...holidayDates].sort(),
     imported     : results,
     ignored      : ignored.length  > 0 ? ignored  : undefined,

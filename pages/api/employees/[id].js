@@ -24,7 +24,7 @@ export default async function handler(req, res) {
       basic_salary, hra, cca, conveyance, allowances,
       pf_applicable, pan, aadhaar, bank_account,
       ifsc_code, bank_branch, bank_location,
-      uan_number, pf_number, emp_code,
+      uan_number, pf_number, emp_code, work_schedule,
     } = req.body
 
     const { data, error } = await supabaseAdmin
@@ -37,6 +37,7 @@ export default async function handler(req, res) {
         designation    : designation    || null,
         department     : department     || null,
         gender         : gender         || 'male',
+        work_schedule  : work_schedule  || 'standard',
         basic_salary   : Number(basic_salary),
         hra            : Number(hra)            || 0,
         cca            : Number(cca)            || 0,
