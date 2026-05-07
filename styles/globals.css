@@ -82,7 +82,7 @@ html, body {
 }
 .brand-icon {
   width: 34px; height: 34px;
-  background: #fff;
+  background: #f8f9fb;
   border-radius: 9px;
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 3px 8px rgba(16,24,40,0.1);

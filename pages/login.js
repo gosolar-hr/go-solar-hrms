@@ -120,7 +120,7 @@ export default function Login() {
         }
         .brand-icon {
           width: 42px; height: 42px;
-          background: #fff;
+          background: #f8f9fb;
           border-radius: 11px;
           display: flex; align-items: center; justify-content: center;
           box-shadow: 0 4px 12px rgba(16,24,40,0.1);
@@ -409,7 +409,7 @@ export default function Login() {
           <div className="glow" />
           <div className="left-inner">
             <div className="brand">
-              <img src="/logo.jpg" className="brand-icon" alt="Go Solar" style={{ objectFit: 'contain', padding: '4px', background: '#fff' }} />
+              <img src="/logo.jpg" className="brand-icon" alt="Go Solar" style={{ objectFit: 'contain', padding: '4px', background: '#f8f9fb' }} />
               <div>
                 <div className="brand-name">Go Solar Solutions</div>
                 <div className="brand-sub">Warrington Renewsol Pvt. Ltd</div>
