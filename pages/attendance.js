@@ -588,28 +588,29 @@ export default function Attendance() {
           {/* Calendar */}
           <div className="card">
             <div className="card-header">
-              <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                <span className="card-title">
-                  {selectedEmployee?.name} — {MONTHS[month-1]} {year}
-                </span>
-                {joiningDate &&
-                  joiningDate.getMonth() + 1 === month &&
-                  joiningDate.getFullYear() === year && (
-                  <div style={{
-                    fontSize    : 11,
-                    color       : '#EA6A05',
-                    background  : '#FFF4ED',
-                    border      : '1px solid #FED7AA',
-                    borderRadius: 6,
-                    padding     : '3px 10px',
-                    fontWeight  : 600,
-                  }}>
-                    Joined {joiningDate.toLocaleDateString('en-IN', {
-                      day:'2-digit', month:'short', year:'numeric'
-                    })} — days before joining shown as N/A
-                  </div>
-                )}
-              </div>
+              <div>
+                <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                  <span className="card-title">
+                    {selectedEmployee?.name} — {MONTHS[month-1]} {year}
+                  </span>
+                  {joiningDate &&
+                    joiningDate.getMonth() + 1 === month &&
+                    joiningDate.getFullYear() === year && (
+                    <div style={{
+                      fontSize    : 11,
+                      color       : '#EA6A05',
+                      background  : '#FFF4ED',
+                      border      : '1px solid #FED7AA',
+                      borderRadius: 6,
+                      padding     : '3px 10px',
+                      fontWeight  : 600,
+                    }}>
+                      Joined {joiningDate.toLocaleDateString('en-IN', {
+                        day:'2-digit', month:'short', year:'numeric'
+                      })} — days before joining shown as N/A
+                    </div>
+                  )}
+                </div>
                 {/* FIX: Auto-save status indicator */}
                 <div style={{ marginTop:4, display:'flex', alignItems:'center', gap:6 }}>
                   {saving && saving !== 'bulk' && (
