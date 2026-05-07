@@ -84,7 +84,7 @@ export default async function handler(req, res) {
     else if (s === 'A' || s === 'A:A' || s === 'LWP' || s === 'LOP') {
       absent_days++
     }
-    // W/O, H, WO → skip, don't count
+    // WO, W/O, H → skip (paid by default)
   }
 
   // Upsert attendance summary

@@ -97,6 +97,7 @@ export default async function handler(req, res) {
       else if (s === 'A' || s === 'A:A' || s === 'LWP' || s === 'LOP') {
         absent_days++
       }
+      // WO and H are NOT counted in either — they are implicitly paid
     }
 
     await supabaseAdmin
