@@ -3,114 +3,139 @@ import Layout from '../components/Layout'
 import Link from 'next/link'
 
 const SITE_TYPE_CONFIG = {
-  residential : { label: 'Residential',  color: '#2E90FA', bg: '#EFF8FF', border: '#B2DDFF' },
-  commercial  : { label: 'Commercial',   color: '#F79009', bg: '#FFFAEB', border: '#FEF0C7' },
-  industrial  : { label: 'Industrial',   color: '#7F56D9', bg: '#F4F3FF', border: '#D9D6FE' },
+  residential : { label:'Residential', color:'#2E90FA', bg:'#EFF8FF', border:'#B2DDFF' },
+  commercial  : { label:'Commercial',  color:'#F79009', bg:'#FFFAEB', border:'#FEF0C7' },
+  industrial  : { label:'Industrial',  color:'#7F56D9', bg:'#F4F3FF', border:'#D9D6FE' },
 }
 
-const FREQ_LABELS = {
-  monthly     : 'Monthly',
-  quarterly   : 'Quarterly',
-  half_yearly : 'Half Yearly',
-  yearly      : 'Yearly',
+const ALERT_CONFIG = {
+  error  : { bg:'#FEF3F2', border:'#FECDCA', color:'#B42318', dot:'#F04438' },
+  warning: { bg:'#FFFAEB', border:'#FEF0C7', color:'#B54708', dot:'#F79009' },
+  info   : { bg:'#EFF8FF', border:'#B2DDFF', color:'#1849A9', dot:'#2E90FA' },
+  success: { bg:'#ECFDF3', border:'#A9EFC5', color:'#027A48', dot:'#12B76A' },
 }
+
+const DAYS = Array.from({length:28}, (_,i) => i+1)
 
 const EMPTY_SITE = {
-  client_name: '', address: '', city: '', site_type: 'residential',
-  system_size_kw: '', installation_date: '',
-  contact_name: '', contact_phone: '', notes: '',
+  client_name:'', site_type:'commercial', address:'Navi Mumbai',
+  city:'', system_size_kw:'', amc_valid_upto:'',
+  contact_name:'', contact_phone:'',
+  assigned_to_emp_code:'', assigned_to_name:'',
+  service_day_1:'', service_day_2:'', notes:'',
 }
 
 export default function AMC() {
-  const [sites,     setSites]     = useState([])
-  const [loading,   setLoading]   = useState(true)
-  const [showForm,  setShowForm]  = useState(false)
-  const [form,      setForm]      = useState(EMPTY_SITE)
-  const [saving,    setSaving]    = useState(false)
-  const [alert,     setAlert]     = useState(null)
-  const [search,    setSearch]    = useState('')
-  const [filter,    setFilter]    = useState('all')
+  const [sites,      setSites]      = useState([])
+  const [employees,  setEmployees]  = useState([])
+  const [alerts,     setAlerts]     = useState([])
+  const [alertCounts,setAlertCounts]= useState({})
+  const [loading,    setLoading]    = useState(true)
+  const [showForm,   setShowForm]   = useState(false)
+  const [form,       setForm]       = useState(EMPTY_SITE)
+  const [saving,     setSaving]     = useState(false)
+  const [alert,      setAlert]      = useState(null)
+  const [search,     setSearch]     = useState('')
+  const [filter,     setFilter]     = useState('all')
+  const [showAlerts, setShowAlerts] = useState(true)
 
   const load = () => {
     setLoading(true)
-    fetch('/api/amc/sites')
-      .then(r => r.json())
-      .then(d => { setSites(Array.isArray(d) ? d : []); setLoading(false) })
+    Promise.all([
+      fetch('/api/amc/sites').then(r => r.json()),
+      fetch('/api/amc/alerts').then(r => r.json()),
+      fetch('/api/employees').then(r => r.json()),
+    ]).then(([sitesData, alertsData, empsData]) => {
+      setSites(Array.isArray(sitesData) ? sitesData : [])
+      setAlerts(alertsData?.alerts || [])
+      setAlertCounts(alertsData?.counts || {})
+      setEmployees(Array.isArray(empsData) ? empsData : [])
+      setLoading(false)
+    })
   }
 
   useEffect(() => { load() }, [])
 
   const onChange = e => {
     const { name, value } = e.target
-    setForm(f => ({ ...f, [name]: value }))
+    // Auto-fill assigned_to_name when emp selected
+    if (name === 'assigned_to_emp_code') {
+      const emp = employees.find(e => e.emp_code === value || e.id === value)
+      setForm(f => ({
+        ...f,
+        assigned_to_emp_code: emp?.emp_code || value,
+        assigned_to_name    : emp?.name     || '',
+      }))
+    } else {
+      setForm(f => ({ ...f, [name]: value }))
+    }
   }
 
   const onSubmit = async () => {
-    if (!form.client_name || !form.address || !form.site_type) {
-      return setAlert({ type:'error', msg:'Client name, address and site type are required.' })
-    }
+    if (!form.client_name) return setAlert({ type:'error', msg:'Site name is required' })
     setSaving(true)
-    const res  = await fetch('/api/amc/sites', {
-      method  : 'POST',
-      headers : { 'Content-Type': 'application/json' },
-      body    : JSON.stringify({
+    const res = await fetch('/api/amc/sites', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
         ...form,
         system_size_kw: form.system_size_kw ? Number(form.system_size_kw) : null,
+        service_day_1 : form.service_day_1  ? Number(form.service_day_1)  : null,
+        service_day_2 : form.service_day_2  ? Number(form.service_day_2)  : null,
       }),
     })
     const data = await res.json()
     setSaving(false)
     if (!res.ok) return setAlert({ type:'error', msg: data.error })
-    setAlert({ type:'success', msg: `${data.client_name} added successfully.` })
+    setAlert({ type:'success', msg:`${data.client_name} added successfully.` })
     setForm(EMPTY_SITE)
     setShowForm(false)
     load()
   }
 
   // Stats
-  const totalSites    = sites.length
-  const activeSites   = sites.filter(s => s.active_contract).length
-  const expiringSoon  = sites.filter(s => s.is_expiring_soon).length
-  const upcomingToday = sites.filter(s =>
-    s.next_visit?.scheduled_date === new Date().toISOString().split('T')[0]
-  ).length
+  const totalKw      = sites.reduce((s,x) => s + (Number(x.system_size_kw)||0), 0)
+  const expiredCount = sites.filter(s => s.is_expired).length
+  const expiringCount= sites.filter(s => s.is_expiring_soon).length
+  const activeCount  = sites.filter(s => !s.is_expired && s.amc_valid_upto).length
 
   const filtered = sites.filter(s => {
     const matchSearch = !search ||
       s.client_name.toLowerCase().includes(search.toLowerCase()) ||
-      s.city?.toLowerCase().includes(search.toLowerCase()) ||
-      s.address.toLowerCase().includes(search.toLowerCase())
+      (s.assigned_to_name||'').toLowerCase().includes(search.toLowerCase())
     const matchFilter =
       filter === 'all'      ? true :
-      filter === 'active'   ? !!s.active_contract :
+      filter === 'expired'  ? s.is_expired :
       filter === 'expiring' ? s.is_expiring_soon :
-      filter === s.site_type
+      filter === 'active'   ? (!s.is_expired && s.amc_valid_upto) :
+      filter === 'no_date'  ? !s.amc_valid_upto :
+      s.assigned_to_name?.toUpperCase() === filter.toUpperCase()
     return matchSearch && matchFilter
   })
 
-  const fmt = n => n ? `₹${Number(n).toLocaleString('en-IN')}` : '—'
+  const fmt = (dateStr) => dateStr
+    ? new Date(dateStr).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'})
+    : '—'
+
+  const techNames = [...new Set(sites.map(s => s.assigned_to_name).filter(Boolean))]
 
   return (
     <Layout>
       <div className="page-header flex items-center justify-between">
         <div>
           <h1 className="page-title">O&M / AMC</h1>
-          <p className="page-sub">Site management and maintenance tracking</p>
+          <p className="page-sub">Site management and AMC renewal tracking — {sites.length} sites · {totalKw.toLocaleString('en-IN')} kW total</p>
         </div>
         <div className="flex gap-8 items-center">
-          <input
-            placeholder="Search client, city..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ width: 220 }}
-          />
-          <select value={filter} onChange={e => setFilter(e.target.value)} style={{ width: 140 }}>
+          <input placeholder="Search site or technician..."
+            value={search} onChange={e => setSearch(e.target.value)}
+            style={{ width:220 }} />
+          <select value={filter} onChange={e => setFilter(e.target.value)} style={{ width:160 }}>
             <option value="all">All Sites</option>
-            <option value="active">Active AMC</option>
-            <option value="expiring">Expiring Soon</option>
-            <option value="residential">Residential</option>
-            <option value="commercial">Commercial</option>
-            <option value="industrial">Industrial</option>
+            <option value="expired">⛔ Expired</option>
+            <option value="expiring">⚠ Expiring Soon</option>
+            <option value="active">✅ Active</option>
+            <option value="no_date">No Date</option>
+            {techNames.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
           <button className="btn btn-primary" onClick={() => { setShowForm(s => !s); setAlert(null) }}>
             {showForm ? 'Cancel' : '+ Add Site'}
@@ -120,45 +145,132 @@ export default function AMC() {
 
       {alert && <div className={`alert alert-${alert.type}`}>{alert.msg}</div>}
 
-      {/* Stats */}
-      <div className="stats-grid" style={{ marginBottom: 20 }}>
-        <div className="card stat-card stat-accent">
-          <div className="stat-label">Total Sites</div>
-          <div className="stat-value">{totalSites}</div>
-          <div className="stat-hint">All registered</div>
-        </div>
-        <div className="card stat-card">
-          <div className="stat-label">Active AMC</div>
-          <div className="stat-value">{activeSites}</div>
-          <div className="stat-hint">Under contract</div>
-        </div>
-        <div className="card stat-card" style={{
-          borderTop: expiringSoon > 0 ? '3px solid #F79009' : ''
-        }}>
-          <div className="stat-label">Expiring Soon</div>
-          <div className="stat-value" style={{
-            color: expiringSoon > 0 ? '#F79009' : 'var(--text-primary)'
-          }}>
-            {expiringSoon}
+      {/* ── ALERTS BANNER ── */}
+      {alertCounts.total > 0 && (
+        <div className="card" style={{ marginBottom:16, overflow:'hidden' }}>
+          <div
+            onClick={() => setShowAlerts(s => !s)}
+            style={{
+              display:'flex', alignItems:'center', justifyContent:'space-between',
+              padding:'12px 20px', cursor:'pointer',
+              background: alertCounts.expired > 0 ? '#FEF3F2' : '#FFFAEB',
+              borderBottom: showAlerts ? '1px solid var(--border-light)' : 'none',
+            }}
+          >
+            <div className="flex items-center gap-8">
+              <span style={{ fontSize:16 }}>
+                {alertCounts.expired > 0 ? '🚨' : '⚠️'}
+              </span>
+              <span style={{ fontWeight:600, fontSize:13.5,
+                color: alertCounts.expired > 0 ? '#B42318' : '#B54708' }}>
+                {alertCounts.total} Alert{alertCounts.total !== 1 ? 's' : ''} require attention
+              </span>
+              <div className="flex gap-8" style={{ fontSize:12 }}>
+                {alertCounts.expired > 0 && (
+                  <span style={{ background:'#FEF3F2', color:'#B42318',
+                    border:'1px solid #FECDCA', padding:'1px 8px', borderRadius:20,
+                    fontWeight:600 }}>
+                    {alertCounts.expired} Expired
+                  </span>
+                )}
+                {alertCounts.expiring > 0 && (
+                  <span style={{ background:'#FFFAEB', color:'#B54708',
+                    border:'1px solid #FEF0C7', padding:'1px 8px', borderRadius:20,
+                    fontWeight:600 }}>
+                    {alertCounts.expiring} Expiring
+                  </span>
+                )}
+                {alertCounts.overdue_visits > 0 && (
+                  <span style={{ background:'#EFF8FF', color:'#1849A9',
+                    border:'1px solid #B2DDFF', padding:'1px 8px', borderRadius:20,
+                    fontWeight:600 }}>
+                    {alertCounts.overdue_visits} Overdue Visits
+                  </span>
+                )}
+                {alertCounts.today_visits > 0 && (
+                  <span style={{ background:'#ECFDF3', color:'#027A48',
+                    border:'1px solid #A9EFC5', padding:'1px 8px', borderRadius:20,
+                    fontWeight:600 }}>
+                    {alertCounts.today_visits} Today
+                  </span>
+                )}
+              </div>
+            </div>
+            <span style={{ color:'var(--text-muted)', fontSize:12 }}>
+              {showAlerts ? '▲ Hide' : '▼ Show'}
+            </span>
           </div>
-          <div className="stat-hint">Within 30 days</div>
+
+          {showAlerts && (
+            <div style={{ padding:'12px 20px', display:'flex', flexDirection:'column', gap:8,
+              maxHeight:300, overflowY:'auto' }}>
+              {alerts.map((a, i) => {
+                const ac = ALERT_CONFIG[a.severity]
+                return (
+                  <div key={i} style={{
+                    display:'flex', alignItems:'center', gap:12,
+                    padding:'10px 14px',
+                    background:ac.bg, border:`1px solid ${ac.border}`,
+                    borderRadius:8,
+                  }}>
+                    <div style={{ width:8, height:8, borderRadius:'50%',
+                      background:ac.dot, flexShrink:0 }} />
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:13, fontWeight:600, color:ac.color }}>
+                        {a.title}
+                      </div>
+                      <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:1 }}>
+                        {a.message} · {a.meta}
+                      </div>
+                    </div>
+                    <div style={{ fontSize:11, color:'var(--text-muted)',
+                      fontFamily:'DM Mono, monospace', flexShrink:0 }}>
+                      {fmt(a.date)}
+                    </div>
+                    {a.site_id && (
+                      <Link href={`/amc/${a.site_id}`} style={{
+                        fontSize:11, fontWeight:600, color:ac.color,
+                        textDecoration:'none', flexShrink:0,
+                        padding:'2px 8px', background:'rgba(255,255,255,0.6)',
+                        borderRadius:6, border:`1px solid ${ac.border}`,
+                      }}>
+                        View →
+                      </Link>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
-        <div className="card stat-card">
-          <div className="stat-label">Today's Visits</div>
-          <div className="stat-value">{upcomingToday}</div>
-          <div className="stat-hint">Scheduled today</div>
-        </div>
+      )}
+
+      {/* ── STATS ── */}
+      <div className="stats-grid" style={{ gridTemplateColumns:'repeat(5,1fr)', marginBottom:20 }}>
+        {[
+          { label:'Total Sites',   value:sites.length,   color:'var(--accent)',   hint:'All registered' },
+          { label:'Active AMC',    value:activeCount,    color:'#12B76A',         hint:'Valid contracts' },
+          { label:'Expiring Soon', value:expiringCount,  color:'#F79009',         hint:'Within 30 days' },
+          { label:'Expired',       value:expiredCount,   color:'#F04438',         hint:'Need renewal' },
+          { label:'Total Capacity',value:`${totalKw.toLocaleString('en-IN')} kW`, color:'#2E90FA', hint:'All sites' },
+        ].map(s => (
+          <div key={s.label} className="card stat-card"
+            style={{ borderTop:`3px solid ${s.color}` }}>
+            <div className="stat-label">{s.label}</div>
+            <div className="stat-value" style={{ fontSize:20, color:s.color }}>{s.value}</div>
+            <div className="stat-hint">{s.hint}</div>
+          </div>
+        ))}
       </div>
 
-      {/* Add Site Form */}
+      {/* ── ADD SITE FORM ── */}
       {showForm && (
-        <div className="card card-pad" style={{ marginBottom: 20 }}>
-          <div className="card-title" style={{ marginBottom: 20 }}>Add New Site</div>
+        <div className="card card-pad" style={{ marginBottom:20 }}>
+          <div className="card-title" style={{ marginBottom:20 }}>Add New Site</div>
           <div className="form-grid">
             <div className="form-group">
-              <label>Client Name *</label>
-              <input name="client_name" placeholder="e.g. Sharma Residence"
-                value={form.client_name} onChange={onChange} />
+              <label>Site Name *</label>
+              <input name="client_name" placeholder="e.g. GOLDSTAR" value={form.client_name} onChange={onChange} />
             </div>
             <div className="form-group">
               <label>Site Type *</label>
@@ -168,40 +280,59 @@ export default function AMC() {
                 <option value="industrial">Industrial</option>
               </select>
             </div>
-            <div className="form-group full">
-              <label>Address *</label>
-              <input name="address" placeholder="Full address"
-                value={form.address} onChange={onChange} />
-            </div>
-            <div className="form-group">
-              <label>City</label>
-              <input name="city" placeholder="e.g. Navi Mumbai"
-                value={form.city} onChange={onChange} />
-            </div>
             <div className="form-group">
               <label>System Size (kW)</label>
-              <input name="system_size_kw" type="number" placeholder="e.g. 10"
-                value={form.system_size_kw} onChange={onChange} />
+              <input name="system_size_kw" type="number" placeholder="e.g. 50" value={form.system_size_kw} onChange={onChange} />
             </div>
             <div className="form-group">
-              <label>Installation Date</label>
-              <input name="installation_date" type="date"
-                value={form.installation_date} onChange={onChange} />
+              <label>AMC Valid Upto</label>
+              <input name="amc_valid_upto" type="date" value={form.amc_valid_upto} onChange={onChange} />
             </div>
             <div className="form-group">
               <label>Contact Person</label>
-              <input name="contact_name" placeholder="e.g. Rahul Sharma"
-                value={form.contact_name} onChange={onChange} />
+              <input name="contact_name" placeholder="Name" value={form.contact_name} onChange={onChange} />
             </div>
             <div className="form-group">
               <label>Contact Phone</label>
-              <input name="contact_phone" placeholder="9876543210"
-                value={form.contact_phone} onChange={onChange} />
+              <input name="contact_phone" placeholder="9876543210" value={form.contact_phone} onChange={onChange} />
+            </div>
+
+            {/* Assign To Employee */}
+            <div className="form-group full">
+              <label>Assign To Technician</label>
+              <select name="assigned_to_emp_code" value={form.assigned_to_emp_code} onChange={onChange}>
+                <option value="">Select employee...</option>
+                {employees
+                  .filter(e => e.is_active !== false)
+                  .map(e => (
+                    <option key={e.id} value={e.emp_code}>
+                      {e.emp_code} — {e.name} ({e.department})
+                    </option>
+                  ))}
+              </select>
+              <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:3 }}>
+                All active employees shown — new joiners appear automatically
+              </div>
+            </div>
+
+            {/* Recurring Service Days */}
+            <div className="form-group">
+              <label>Service Day 1 (of month)</label>
+              <select name="service_day_1" value={form.service_day_1} onChange={onChange}>
+                <option value="">Not set</option>
+                {DAYS.map(d => <option key={d} value={d}>{d}th of every month</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Service Day 2 (of month)</label>
+              <select name="service_day_2" value={form.service_day_2} onChange={onChange}>
+                <option value="">Not set</option>
+                {DAYS.map(d => <option key={d} value={d}>{d}th of every month</option>)}
+              </select>
             </div>
             <div className="form-group full">
               <label>Notes</label>
-              <input name="notes" placeholder="Any additional notes"
-                value={form.notes} onChange={onChange} />
+              <input name="notes" placeholder="Any additional info" value={form.notes} onChange={onChange} />
             </div>
           </div>
           <div className="divider" />
@@ -209,111 +340,125 @@ export default function AMC() {
             <button className="btn btn-primary" onClick={onSubmit} disabled={saving}>
               {saving ? 'Saving...' : 'Save Site'}
             </button>
-            <button className="btn btn-outline" onClick={() => setShowForm(false)}>
-              Cancel
-            </button>
+            <button className="btn btn-outline" onClick={() => setShowForm(false)}>Cancel</button>
           </div>
         </div>
       )}
 
-      {/* Sites Table */}
+      {/* ── SITES TABLE ── */}
       <div className="card">
         <div className="card-header">
-          <span className="card-title">Sites — {filtered.length} shown</span>
+          <span className="card-title">
+            {filter === 'all' ? 'All Sites' : filter.charAt(0).toUpperCase() + filter.slice(1)}
+            {' '}— {filtered.length} shown
+          </span>
+          <span style={{ fontSize:12, color:'var(--text-muted)' }}>
+            Click a site to view visits, set service dates, and update checklist
+          </span>
         </div>
         <div className="table-wrap">
           {loading ? (
-            <div className="empty-state"><p>Loading...</p></div>
+            <div className="empty-state"><p>Loading sites...</p></div>
           ) : filtered.length === 0 ? (
             <div className="empty-state">
               <strong>No sites found</strong>
-              <p>Add your first site using the "+ Add Site" button.</p>
+              <p>Add your first site or adjust the filter.</p>
             </div>
           ) : (
             <table>
               <thead>
                 <tr>
-                  <th>Client</th>
+                  <th>Site Name</th>
                   <th>Type</th>
-                  <th>Location</th>
-                  <th>Size</th>
-                  <th>AMC Status</th>
+                  <th>Capacity</th>
+                  <th>AMC Valid Upto</th>
+                  <th>Status</th>
+                  <th>Assigned To</th>
+                  <th>Service Days</th>
                   <th>Next Visit</th>
-                  <th>Frequency</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(site => {
-                  const tc  = SITE_TYPE_CONFIG[site.site_type] || SITE_TYPE_CONFIG.residential
-                  const exp = site.active_contract
-                    ? new Date(site.active_contract.end_date)
-                    : null
-                  const daysLeft = exp
-                    ? Math.ceil((exp - new Date()) / (1000*60*60*24))
-                    : null
+                  const tc = SITE_TYPE_CONFIG[site.site_type] || SITE_TYPE_CONFIG.commercial
+
+                  const statusBadge = site.is_expired
+                    ? { label:'Expired',       bg:'#FEF3F2', color:'#B42318', border:'#FECDCA' }
+                    : site.is_expiring_soon
+                      ? { label:'Expiring Soon', bg:'#FFFAEB', color:'#B54708', border:'#FEF0C7' }
+                      : site.amc_valid_upto
+                        ? { label:'Active',        bg:'#ECFDF3', color:'#027A48', border:'#A9EFC5' }
+                        : { label:'No Date',       bg:'var(--surface-2)', color:'var(--text-muted)', border:'var(--border)' }
+
+                  const daysText = site.is_expired
+                    ? `${Math.abs(site.days_left)} days ago`
+                    : site.days_left !== null
+                      ? `${site.days_left} days left`
+                      : null
+
+                  const serviceInfo = [site.service_day_1, site.service_day_2]
+                    .filter(Boolean)
+                    .map(d => `${d}th`)
+                    .join(' & ')
 
                   return (
                     <tr key={site.id}>
                       <td>
-                        <div style={{ fontWeight:500 }}>{site.client_name}</div>
-                        {site.contact_phone && (
-                          <div style={{ fontSize:11, color:'var(--text-muted)' }}>
-                            {site.contact_phone}
-                          </div>
+                        <div style={{ fontWeight:600, fontSize:13.5 }}>{site.client_name}</div>
+                        {site.notes && (
+                          <div style={{ fontSize:11, color:'#F04438', marginTop:1 }}>{site.notes}</div>
                         )}
                       </td>
                       <td>
-                        <span className="badge" style={{
-                          background: tc.bg, color: tc.color,
-                          border: `1px solid ${tc.border}`
+                        <span style={{
+                          background:tc.bg, color:tc.color, border:`1px solid ${tc.border}`,
+                          padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:600,
                         }}>
                           {tc.label}
                         </span>
                       </td>
-                      <td style={{ color:'var(--text-secondary)' }}>
-                        {site.city || site.address.split(',').slice(-1)[0]?.trim()}
-                      </td>
                       <td className="mono">
                         {site.system_size_kw ? `${site.system_size_kw} kW` : '—'}
                       </td>
+                      <td className="mono" style={{ fontSize:12 }}>
+                        {fmt(site.amc_valid_upto)}
+                      </td>
                       <td>
-                        {site.active_contract ? (
-                          <div>
-                            <span className={`badge ${
-                              site.is_expiring_soon ? 'badge-orange' : 'badge-green'
-                            }`}>
-                              {site.is_expiring_soon ? '⚠ Expiring' : 'Active'}
-                            </span>
-                            {daysLeft !== null && (
-                              <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>
-                                {daysLeft > 0 ? `${daysLeft} days left` : 'Expired'}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="badge badge-gray">No AMC</span>
+                        <span style={{
+                          background:statusBadge.bg, color:statusBadge.color,
+                          border:`1px solid ${statusBadge.border}`,
+                          padding:'2px 8px', borderRadius:20,
+                          fontSize:11, fontWeight:600, display:'block', marginBottom:2,
+                        }}>
+                          {statusBadge.label}
+                        </span>
+                        {daysText && (
+                          <span style={{ fontSize:10, color:'var(--text-muted)' }}>
+                            {daysText}
+                          </span>
                         )}
                       </td>
-                      <td className="mono" style={{ fontSize:12 }}>
+                      <td style={{ fontSize:13 }}>
+                        {site.assigned_to_name || '—'}
+                      </td>
+                      <td style={{ fontSize:12, color:'var(--text-secondary)' }}>
+                        {serviceInfo || <span style={{ color:'var(--text-muted)' }}>Not set</span>}
+                      </td>
+                      <td style={{ fontSize:12 }}>
                         {site.next_visit
-                          ? new Date(site.next_visit.scheduled_date)
-                              .toLocaleDateString('en-IN', {
-                                day:'2-digit', month:'short', year:'numeric'
-                              })
-                          : '—'}
+                          ? <span style={{ color:'#2E90FA' }}>
+                              {fmt(site.next_visit.scheduled_date)}
+                            </span>
+                          : site.has_overdue
+                            ? <span style={{ color:'#F04438', fontWeight:600 }}>Overdue!</span>
+                            : <span style={{ color:'var(--text-muted)' }}>—</span>
+                        }
                       </td>
                       <td>
-                        {site.active_contract
-                          ? FREQ_LABELS[site.active_contract.visit_frequency]
-                          : '—'}
-                      </td>
-                      <td>
-                        <Link
-                          href={`/amc/${site.id}`}
+                        <Link href={`/amc/${site.id}`}
                           style={{ fontSize:12, fontWeight:600,
-                            color:'var(--accent)', textDecoration:'none' }}
-                        >
+                            color:'var(--accent)', textDecoration:'none' }}>
                           View →
                         </Link>
                       </td>
