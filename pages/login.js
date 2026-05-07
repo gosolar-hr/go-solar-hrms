@@ -556,7 +556,7 @@ export default function Login() {
 
               <div className="form-footer">
                 <div className="status-dot" />
-                <span className="footer-text">Secured · Session expires in 8 hours</span>
+                <span className="footer-text">Secured · Active Session</span>
               </div>
             </div>
 

@@ -17,8 +17,8 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Incorrect password' })
     }
     res.setHeader('Set-Cookie', [
-      `hrms_auth=hr; HttpOnly; Path=/; Max-Age=28800; SameSite=Strict`,
-      `hrms_role=hr; Path=/; Max-Age=28800; SameSite=Strict`,
+      `hrms_auth=hr; HttpOnly; Path=/; SameSite=Strict`,
+      `hrms_role=hr; Path=/; SameSite=Strict`,
     ])
     return res.status(200).json({ success: true, role: 'hr', redirect: '/' })
   }
@@ -29,8 +29,8 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Incorrect password' })
     }
     res.setHeader('Set-Cookie', [
-      `hrms_auth=tech; HttpOnly; Path=/; Max-Age=28800; SameSite=Strict`,
-      `hrms_role=tech; Path=/; Max-Age=28800; SameSite=Strict`,
+      `hrms_auth=tech; HttpOnly; Path=/; SameSite=Strict`,
+      `hrms_role=tech; Path=/; SameSite=Strict`,
     ])
     return res.status(200).json({ success: true, role: 'technician', redirect: '/amc' })
   }
