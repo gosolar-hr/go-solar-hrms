@@ -588,6 +588,7 @@ export default function Attendance() {
           {/* Calendar */}
           <div className="card">
             <div className="card-header">
+              {/* LEFT: title + joining badge + save status — all in one div */}
               <div>
                 <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                   <span className="card-title">
@@ -597,13 +598,9 @@ export default function Attendance() {
                     joiningDate.getMonth() + 1 === month &&
                     joiningDate.getFullYear() === year && (
                     <div style={{
-                      fontSize    : 11,
-                      color       : '#EA6A05',
-                      background  : '#FFF4ED',
-                      border      : '1px solid #FED7AA',
-                      borderRadius: 6,
-                      padding     : '3px 10px',
-                      fontWeight  : 600,
+                      fontSize:'11px', color:'#EA6A05', background:'#FFF4ED',
+                      border:'1px solid #FED7AA', borderRadius:6,
+                      padding:'3px 10px', fontWeight:600,
                     }}>
                       Joined {joiningDate.toLocaleDateString('en-IN', {
                         day:'2-digit', month:'short', year:'numeric'
@@ -611,11 +608,9 @@ export default function Attendance() {
                     </div>
                   )}
                 </div>
-                {/* FIX: Auto-save status indicator */}
                 <div style={{ marginTop:4, display:'flex', alignItems:'center', gap:6 }}>
                   {saving && saving !== 'bulk' && (
-                    <span style={{ fontSize:11, color:'#2E90FA', display:'flex',
-                      alignItems:'center', gap:4 }}>
+                    <span style={{ fontSize:11, color:'#2E90FA', display:'flex', alignItems:'center', gap:4 }}>
                       <span style={{ display:'inline-block', width:8, height:8,
                         border:'2px solid #2E90FA', borderTopColor:'transparent',
                         borderRadius:'50%', animation:'spin 0.6s linear infinite' }} />
@@ -623,8 +618,7 @@ export default function Attendance() {
                     </span>
                   )}
                   {saving === 'bulk' && (
-                    <span style={{ fontSize:11, color:'#2E90FA', display:'flex',
-                      alignItems:'center', gap:4 }}>
+                    <span style={{ fontSize:11, color:'#2E90FA', display:'flex', alignItems:'center', gap:4 }}>
                       <span style={{ display:'inline-block', width:8, height:8,
                         border:'2px solid #2E90FA', borderTopColor:'transparent',
                         borderRadius:'50%', animation:'spin 0.6s linear infinite' }} />
@@ -632,8 +626,7 @@ export default function Attendance() {
                     </span>
                   )}
                   {!saving && savedDate && (
-                    <span style={{ fontSize:11, color:'#027A48', display:'flex',
-                      alignItems:'center', gap:4 }}>
+                    <span style={{ fontSize:11, color:'#027A48', display:'flex', alignItems:'center', gap:4 }}>
                       <span style={{ fontSize:13 }}>✓</span>
                       Saved automatically
                     </span>
@@ -646,55 +639,29 @@ export default function Attendance() {
                 </div>
               </div>
 
+              {/* RIGHT: Quick Fill buttons */}
               <div className="flex gap-8 items-center">
-                {/* Quick Fill Buttons */}
                 <div style={{
-                  display     : 'flex',
-                  gap         : 6,
-                  alignItems  : 'center',
-                  padding     : '4px 8px',
-                  background  : 'var(--bg)',
-                  borderRadius: 8,
-                  border      : '1px solid var(--border)',
+                  display:'flex', gap:6, alignItems:'center',
+                  padding:'4px 8px', background:'var(--bg)',
+                  borderRadius:8, border:'1px solid var(--border)',
                 }}>
-                  <span style={{ fontSize:11, color:'var(--text-muted)',
-                    fontWeight:600, marginRight:4 }}>
+                  <span style={{ fontSize:11, color:'var(--text-muted)', fontWeight:600, marginRight:4 }}>
                     Quick Fill:
                   </span>
-                  <button
-                    className="btn btn-sm"
-                    onClick={() => bulkFill('P')}
-                    disabled={!!saving}
-                    style={{
-                      background: '#ECFDF3', color:'#027A48',
-                      border:'1px solid #A9EFC5', height:28,
-                      padding:'0 10px', fontSize:11, fontWeight:600,
-                    }}
-                  >
+                  <button className="btn btn-sm" onClick={() => bulkFill('P')} disabled={!!saving}
+                    style={{ background:'#ECFDF3', color:'#027A48', border:'1px solid #A9EFC5',
+                      height:28, padding:'0 10px', fontSize:11, fontWeight:600 }}>
                     ✓ All Present
                   </button>
-                  <button
-                    className="btn btn-sm"
-                    onClick={() => bulkFill('A')}
-                    disabled={!!saving}
-                    style={{
-                      background: '#FEF3F2', color:'#B42318',
-                      border:'1px solid #FECDCA', height:28,
-                      padding:'0 10px', fontSize:11, fontWeight:600,
-                    }}
-                  >
+                  <button className="btn btn-sm" onClick={() => bulkFill('A')} disabled={!!saving}
+                    style={{ background:'#FEF3F2', color:'#B42318', border:'1px solid #FECDCA',
+                      height:28, padding:'0 10px', fontSize:11, fontWeight:600 }}>
                     ✗ All Absent
                   </button>
-                  <button
-                    className="btn btn-sm"
-                    onClick={() => bulkFill(null)}
-                    disabled={!!saving}
-                    style={{
-                      background:'var(--surface)', color:'var(--text-secondary)',
-                      border:'1px solid var(--border)', height:28,
-                      padding:'0 10px', fontSize:11, fontWeight:600,
-                    }}
-                  >
+                  <button className="btn btn-sm" onClick={() => bulkFill(null)} disabled={!!saving}
+                    style={{ background:'var(--surface)', color:'var(--text-secondary)',
+                      border:'1px solid var(--border)', height:28, padding:'0 10px', fontSize:11, fontWeight:600 }}>
                     Clear All
                   </button>
                 </div>
