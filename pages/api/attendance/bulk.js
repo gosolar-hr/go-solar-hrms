@@ -3,8 +3,7 @@ import { supabaseAdmin } from '../../../lib/supabase'
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  const { employee_id, month, year, dates, status, work_schedule } = req.body
-  // dates = ['2026-04-01', '2026-04-02', ...]
+  const { employee_id, month, year, dates, status, include_weekoffs } = req.body
 
   if (!employee_id || !dates?.length || !month || !year) {
     return res.status(400).json({ error: 'employee_id, dates, month, year required' })
@@ -32,12 +31,23 @@ export default async function handler(req, res) {
   const rows = validDates.map(date => {
     const dow      = new Date(date).getDay()
     const isSunday = dow === 0
+
+    let finalStatus = status || 'A'
+
+    // If include_weekoffs = true → mark ALL days as A (full month LWP)
+    // If include_weekoffs = false/undefined → protect WO days
+    if (!include_weekoffs) {
+      if ((status === 'A' || status === 'P') && isSunday) {
+        finalStatus = 'W/O'
+      }
+    }
+
     return {
       employee_id,
       date,
-      status     : (status === 'A' || status === 'P') && isSunday ? 'W/O' : (status || 'A'),
+      status     : finalStatus,
       salary_cut : 0,
-      remark     : null,
+      remark     : include_weekoffs ? 'Full month LWP' : null,
     }
   })
 
@@ -58,7 +68,6 @@ export default async function handler(req, res) {
     .gte('date', from)
     .lte('date', to)
 
-  const SKIP = new Set(['W/O', 'WO', 'H'])
   let present_days = 0
   let absent_days  = 0
   let late_marks   = 0
@@ -94,7 +103,7 @@ export default async function handler(req, res) {
       employee_id,
       month,
       year,
-      present_days : present_days,
+      present_days,
       leaves       : absent_days,
       late_marks,
     }], { onConflict: 'employee_id,month,year' })
@@ -102,7 +111,7 @@ export default async function handler(req, res) {
   if (sumErr) return res.status(500).json({ error: sumErr.message })
 
   return res.status(200).json({
-    message      : `Bulk attendance saved for ${validDates.length} days`,
+    message      : `Bulk attendance saved`,
     present_days : present_days,
     absent_days,
     late_marks,

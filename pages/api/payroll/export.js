@@ -31,6 +31,16 @@ export default async function handler(req, res) {
     return res.status(404).json({ error: 'No payroll data found for this month' })
   }
 
+  // Fetch attendance for accurate LWP/paid days
+  const { data: attendanceList } = await supabaseAdmin
+    .from('attendance')
+    .select('employee_id, present_days, leaves, late_marks')
+    .eq('month', parseInt(month))
+    .eq('year',  parseInt(year))
+
+  const attendanceMap = {}
+  ;(attendanceList || []).forEach(a => { attendanceMap[a.employee_id] = a })
+
   // ── Build Excel ──────────────────────────────────────
   const wb    = new ExcelJS.Workbook()
   wb.creator  = 'Go Solar HRMS'
@@ -117,8 +127,11 @@ export default async function handler(req, res) {
   const dataStartRow = 5
 
   records.forEach((r, idx) => {
-    const e      = r.employees || {}
-    const lop    = Math.max(0, 30 - (r.present_days || 30))
+    const e         = r.employees || {}
+    const att       = attendanceMap[r.employee_id] || {}
+    const lwpDays   = Number(att.leaves       || 0)
+    const paidDays  = Math.max(0, 30 - lwpDays)
+
     const deduct = Number(r.pf_deduction) + Number(r.esic_deduction) +
                    Number(r.pt_deduction)
 
@@ -130,8 +143,8 @@ export default async function handler(req, res) {
         ? new Date(e.date_of_joining).toLocaleDateString('en-IN',
             { day:'2-digit', month:'short', year:'numeric' })
         : '—',
-      r.present_days     || 30,
-      lop,
+      paidDays,
+      lwpDays,
       Number(e.basic_salary  || 0),
       Number(e.hra           || 0),
       Number(e.cca           || 0),
@@ -169,7 +182,7 @@ export default async function handler(req, res) {
         cell.font = { bold: true, color: { argb: 'FF027A48' }, size: 10, name: 'Arial' }
       }
       // Highlight LWP red if > 0
-      if (colNum === 6 && lop > 0) {
+      if (colNum === 6 && lwpDays > 0) {
         cell.font = { bold: true, color: { argb: 'FFF04438' }, size: 10, name: 'Arial' }
       }
     })

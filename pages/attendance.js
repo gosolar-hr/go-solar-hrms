@@ -252,6 +252,59 @@ export default function Attendance() {
     }
   }
 
+  const bulkFillAll = async (status) => {
+    if (!selectedEmp) return
+
+    // Confirm before doing full month LWP
+    if (!confirm(`Mark ALL days as LWP for ${selectedEmployee?.name}? This includes Week Offs and Holidays.`)) return
+
+    // ALL days in the month including WO/H (but still respecting joining date)
+    const allDays = days
+      .filter(({ date }) => !isBeforeJoining(date))
+      .map(({ date }) => date)
+
+    if (allDays.length === 0) return
+
+    // Update UI immediately
+    const newCalData = { ...calData }
+    allDays.forEach(date => {
+      newCalData[date] = { status: 'A', late_slab: 0, remark: 'Full month LWP' }
+    })
+    setCalData(newCalData)
+    setSaving('bulk')
+
+    // Call bulk API with include_weekoffs flag
+    const res = await fetch('/api/attendance/bulk', {
+      method  : 'POST',
+      headers : { 'Content-Type': 'application/json' },
+      body    : JSON.stringify({
+        employee_id      : selectedEmp,
+        month,
+        year,
+        dates            : allDays,
+        status           : 'A',
+        include_weekoffs : true,
+      }),
+    })
+
+    const data = await res.json()
+    setSaving(null)
+
+    if (!res.ok) {
+      setAlert({ type:'error', msg: data.error })
+      loadCalData(selectedEmp, month, year)
+      return
+    }
+
+    setAlert({
+      type : 'warning',
+      msg  : `⚠ Full month LWP applied for ${selectedEmployee?.name} — marked as LWP including Week Offs.`
+    })
+
+    // Reload to get perfect summary
+    loadCalData(selectedEmp, month, year)
+  }
+
   const bulkFill = async (status) => {
     if (!selectedEmp) return
 
@@ -658,6 +711,11 @@ export default function Attendance() {
                     style={{ background:'#FEF3F2', color:'#B42318', border:'1px solid #FECDCA',
                       height:28, padding:'0 10px', fontSize:11, fontWeight:600 }}>
                     ✗ All Absent
+                  </button>
+                  <button className="btn btn-sm" onClick={() => bulkFillAll('A')} disabled={!!saving}
+                    style={{ background:'#FEF3F2', color:'#B42318', border:'1px solid #FECDCA',
+                      height:28, padding:'0 10px', fontSize:11, fontWeight:600 }}>
+                    Full Month LWP
                   </button>
                   <button className="btn btn-sm" onClick={() => bulkFill(null)} disabled={!!saving}
                     style={{ background:'var(--surface)', color:'var(--text-secondary)',
