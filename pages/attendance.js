@@ -46,6 +46,7 @@ export default function Attendance() {
   const [showHoliday,  setShowHoliday]  = useState(false)
   const [newHoliday,   setNewHoliday]   = useState({ date:'', name:'' })
   const [empSchedule,  setEmpSchedule]  = useState('standard')
+  const [joiningDate,  setJoiningDate]  = useState(null)
   const fileRef     = useRef(null)
   // FIX: use a ref to track the current fetch request
   // so stale responses from previous employee are ignored
@@ -62,20 +63,25 @@ export default function Attendance() {
   useEffect(() => {
     if (!selectedEmp) return
 
-    // First try from loaded employees list
     const emp = employees.find(e => e.id === selectedEmp)
     if (emp) {
       setEmpSchedule(emp.work_schedule || 'standard')
+      if (emp.date_of_joining) setJoiningDate(new Date(emp.date_of_joining))
+      else setJoiningDate(null)
       return
     }
 
-    // Fallback: fetch directly if not in list yet
     fetch(`/api/employees/${selectedEmp}`)
       .then(r => r.json())
       .then(d => {
         setEmpSchedule(d?.work_schedule || 'standard')
+        if (d?.date_of_joining) setJoiningDate(new Date(d.date_of_joining))
+        else setJoiningDate(null)
       })
-      .catch(() => setEmpSchedule('standard'))
+      .catch(() => {
+        setEmpSchedule('standard')
+        setJoiningDate(null)
+      })
   }, [selectedEmp, employees])
 
   // Load holidays
@@ -85,6 +91,14 @@ export default function Attendance() {
       .then(d => setHolidays(Array.isArray(d) ? d : []))
 
   useEffect(() => { loadHolidays() }, [year])
+
+  const isBeforeJoining = (dateStr) => {
+    if (!joiningDate) return false
+    const d = new Date(dateStr)
+    const joining = new Date(joiningDate.getFullYear(), joiningDate.getMonth(), joiningDate.getDate())
+    const current = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+    return current < joining
+  }
 
   // FIX: useCallback + fetchId prevents stale closure overwriting data
   const loadCalData = useCallback((empId, m, y) => {
@@ -121,6 +135,9 @@ export default function Attendance() {
 
         if (Array.isArray(d)) {
           d.forEach(row => {
+            // Skip days before joining
+            if (joiningDate && new Date(row.date) < joiningDate) return
+
             const s = (row.status || '').toUpperCase().trim()
             if (s === 'P' || s === 'P:P') {
               present++
@@ -242,6 +259,7 @@ export default function Attendance() {
 
     const workingDays = days
       .filter(({ date, dow }) => {
+        if (isBeforeJoining(date)) return false
         const isSun    = dow === 0
         const is2nd4th = isNthSaturday(date, dow, [2, 4])
         const isHoliday = holidayDates.includes(date)
@@ -309,6 +327,7 @@ export default function Attendance() {
   }
 
   const cycleStatus = (date, dow) => {
+    if (isBeforeJoining(date)) return
     const holidayDates = holidays.map(h => h.date)
 
     const isSun    = dow === 0
@@ -569,10 +588,28 @@ export default function Attendance() {
           {/* Calendar */}
           <div className="card">
             <div className="card-header">
-              <div>
+              <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                 <span className="card-title">
                   {selectedEmployee?.name} — {MONTHS[month-1]} {year}
                 </span>
+                {joiningDate &&
+                  joiningDate.getMonth() + 1 === month &&
+                  joiningDate.getFullYear() === year && (
+                  <div style={{
+                    fontSize    : 11,
+                    color       : '#EA6A05',
+                    background  : '#FFF4ED',
+                    border      : '1px solid #FED7AA',
+                    borderRadius: 6,
+                    padding     : '3px 10px',
+                    fontWeight  : 600,
+                  }}>
+                    Joined {joiningDate.toLocaleDateString('en-IN', {
+                      day:'2-digit', month:'short', year:'numeric'
+                    })} — days before joining shown as N/A
+                  </div>
+                )}
+              </div>
                 {/* FIX: Auto-save status indicator */}
                 <div style={{ marginTop:4, display:'flex', alignItems:'center', gap:6 }}>
                   {saving && saving !== 'bulk' && (
@@ -705,10 +742,11 @@ export default function Attendance() {
                       empSchedule === '6day'  ? dow === 0 :
                       (dow === 0 || isNthSaturday(date, dow, [2,4]))
 
-                    const isLocked = isWeekOff || isHol
-                    const _today   = new Date()
-                    const isToday  = date === `${_today.getFullYear()}-${String(_today.getMonth()+1).padStart(2,'0')}-${String(_today.getDate()).padStart(2,'0')}`
-                    const isSaved  = savedDate === date
+                    const isPreJoin = isBeforeJoining(date)
+                    const isLocked  = isWeekOff || isHol || isPreJoin
+                    const _today    = new Date()
+                    const isToday   = date === `${_today.getFullYear()}-${String(_today.getMonth()+1).padStart(2,'0')}-${String(_today.getDate()).padStart(2,'0')}`
+                    const isSaved   = savedDate === date
 
                     return (
                       <div
@@ -723,14 +761,18 @@ export default function Attendance() {
                               : saving === date
                                 ? '2px solid #2E90FA'
                                 : `1.5px solid ${cfg ? cfg.border : '#E4E7EC'}`,
-                          background   : isLocked ? '#F8F9FB' : (cfg ? cfg.bg : '#fff'),
+                          background   : isPreJoin
+                            ? '#F2F4F7'
+                            : isLocked
+                              ? '#F8F9FB'
+                              : (cfg ? cfg.bg : '#fff'),
                           padding      : '8px 6px',
                           cursor       : isLocked ? 'default' : 'pointer',
                           position     : 'relative',
                           minHeight    : 64,
                           transition   : 'all 0.15s',
                           boxShadow    : isToday ? '0 0 0 2px #F97316' : 'none',
-                          opacity      : isLocked ? 0.6 : 1,
+                          opacity      : isPreJoin ? 0.4 : isLocked ? 0.6 : 1,
                         }}
                       >
                         {/* Day number */}
@@ -793,7 +835,7 @@ export default function Attendance() {
                         {/* Week off / Holiday label — always show on locked days */}
                         {isLocked && (
                           <div style={{ fontSize:9, color:'#98A2B3', marginTop:2 }}>
-                            {isHol ? 'H' : 'WO'}
+                            {isPreJoin ? 'N/A' : isHol ? 'H' : 'WO'}
                           </div>
                         )}
                       </div>

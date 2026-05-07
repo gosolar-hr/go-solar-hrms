@@ -10,8 +10,26 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'employee_id, dates, month, year required' })
   }
 
-  // Upsert all days in one DB call
-  const rows = dates.map(date => {
+  // Fetch joining date for this employee
+  const { data: empData } = await supabaseAdmin
+    .from('employees')
+    .select('date_of_joining')
+    .eq('id', employee_id)
+    .single()
+
+  const joiningDate = empData?.date_of_joining
+    ? new Date(empData.date_of_joining)
+    : null
+
+  // Filter dates to only after joining
+  const validDates = dates.filter(date => {
+    if (!joiningDate) return true
+    // Compare date strings (YYYY-MM-DD)
+    return date >= joiningDate.toISOString().split('T')[0]
+  })
+
+  // Upsert valid days in one DB call
+  const rows = validDates.map(date => {
     const dow      = new Date(date).getDay()
     const isSunday = dow === 0
     return {
@@ -84,7 +102,7 @@ export default async function handler(req, res) {
   if (sumErr) return res.status(500).json({ error: sumErr.message })
 
   return res.status(200).json({
-    message      : `Bulk attendance saved for ${dates.length} days`,
+    message      : `Bulk attendance saved for ${validDates.length} days`,
     present_days : present_days,
     absent_days,
     late_marks,
