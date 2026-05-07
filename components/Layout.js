@@ -97,6 +97,7 @@ export default function Layout({ children }) {
               color:'var(--accent)', background:'var(--accent-light)',
               border:'1px solid #FED7AA', borderRadius:6,
               padding:'4px 8px', marginBottom:10, textAlign:'center',
+              marginTop: 12,
             }}>
               🔧 Technician Access
             </div>
