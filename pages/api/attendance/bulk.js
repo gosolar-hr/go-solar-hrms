@@ -76,7 +76,7 @@ export default async function handler(req, res) {
       employee_id,
       month,
       year,
-      present_days : Math.round(present_days),
+      present_days : present_days,
       leaves       : absent_days,
       late_marks,
     }], { onConflict: 'employee_id,month,year' })
@@ -85,7 +85,7 @@ export default async function handler(req, res) {
 
   return res.status(200).json({
     message      : `Bulk attendance saved for ${dates.length} days`,
-    present_days : Math.round(present_days),
+    present_days : present_days,
     absent_days,
     late_marks,
   })

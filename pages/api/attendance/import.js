@@ -148,7 +148,7 @@ export default async function handler(req, res) {
         employee_id  : totals.employee_id,
         month,
         year,
-        present_days : Math.round(totals.present_days),
+        present_days : totals.present_days,
         leaves       : totals.absent_days,
         late_marks   : totals.late_marks,
       }], { onConflict: 'employee_id,month,year' })

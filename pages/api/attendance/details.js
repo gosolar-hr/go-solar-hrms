@@ -90,7 +90,7 @@ export default async function handler(req, res) {
         employee_id,
         month,
         year,
-        present_days : Math.round(present_days),
+        present_days : present_days,
         leaves       : absent_days,
         late_marks,
       }], { onConflict: 'employee_id,month,year' })
