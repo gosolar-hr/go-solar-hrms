@@ -389,9 +389,11 @@ export default function Login() {
         .version {
           text-align: center;
           margin-top: 16px;
-          font-size: 11px;
-          color: #D0D5DD;
+          font-size: 11.5px;
+          color: #667085;
           font-family: 'DM Mono', monospace;
+          font-weight: 500;
+          letter-spacing: 0.03em;
         }
 
         @media (max-width: 768px) {
@@ -488,7 +490,7 @@ export default function Login() {
                       </span>
                       <input
                         type="email"
-                        placeholder="hr@gosolar.co.in"
+                        placeholder="Enter your email address"
                         value={email}
                         onChange={e => { setEmail(e.target.value); setError('') }}
                         autoFocus={role === 'hr'}
