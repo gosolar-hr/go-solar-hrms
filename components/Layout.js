@@ -85,14 +85,11 @@ export default function Layout({ children }) {
         </div>
 
         <div className="sidebar-footer">
-          <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:6 }}>
-            HRMS · Phase 2 · v2.0
+          <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:4 }}>
+            HRMS PHASE 2 · V2.0
           </div>
-          <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:12 }}>
-            Made by{' '}
-            <span style={{ fontWeight:600, color:'var(--accent)' }}>
-              Softsync Solutions
-            </span>
+          <div style={{ fontSize:11, color:'var(--text-primary)', fontWeight:600 }}>
+            Powered by <span style={{ color:'var(--accent)' }}>Softsync Solutions</span>
           </div>
           {role === 'tech' && (
             <div style={{
