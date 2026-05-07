@@ -90,8 +90,9 @@ export default async function handler(req, res) {
     // Calculate
     const { overtimeAmount, hourlyRate } = calculateOvertime(emp, overtimeHours)
 
-    const { gross, lateDeduction } = calculateGrossSalary(
-      emp, attendance, lateSlabPercent, incentive, overtimeAmount
+    const { gross, lateDeduction, effectiveDays } = calculateGrossSalary(
+      emp, attendance, lateSlabPercent, incentive, overtimeAmount,
+      month, year
     )
 
     const pf   = calculatePF(emp)

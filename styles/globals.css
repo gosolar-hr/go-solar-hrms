@@ -253,6 +253,7 @@ input::placeholder { color: var(--text-muted); }
 }
 .alert-success { background: #ECFDF3; color: #027A48; border: 1px solid #A9EFC5; }
 .alert-error   { background: #FEF3F2; color: #B42318; border: 1px solid #FECDCA; }
+.alert-warning { background: #FFFAEB; color: #B54708; border: 1px solid #FEF0C7; }
 
 /* ── Divider ── */
 .divider { height: 1px; background: var(--border-light); margin: 24px 0; }

@@ -198,14 +198,24 @@ export default function Attendance() {
       }),
     })
 
+    const data = await res.json()
     setSaving(null)
 
     if (!res.ok) {
       setAlert({ type:'error', msg: `Failed to save ${date}` })
     } else {
-      // Show saved tick for 2 seconds then clear
       setSavedDate(date)
       setTimeout(() => setSavedDate(null), 2000)
+
+      // Show sandwich warning
+      if (data.sandwich_applied && data.sandwich_dates?.length > 0) {
+        setAlert({
+          type : 'warning',
+          msg  : `⚠ Sandwich Leave Rule applied — ${data.sandwich_dates.join(', ')} converted to LWP automatically.`
+        })
+        // Reload calendar to show updated days
+        loadCalData(selectedEmp, month, year)
+      }
 
       // Refresh DB summary from updated calData
       const updatedData = { ...calData, [date]: updated }

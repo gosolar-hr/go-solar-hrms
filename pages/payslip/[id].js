@@ -42,7 +42,18 @@ export default function Payslip() {
 
   const emp         = data.employees
   const monthLabel  = MONTHS[Number(month) - 1]
-  const WORKING_DAYS = 30
+  let WORKING_DAYS  = 30
+
+  // ── Calculate effective days for new joiners ────────
+  const joining     = new Date(emp.date_of_joining)
+  const joiningMonth = joining.getMonth() + 1
+  const joiningYear  = joining.getFullYear()
+
+  if (joiningYear === Number(year) && joiningMonth === Number(month)) {
+    const daysInMonth  = new Date(Number(year), Number(month), 0).getDate()
+    WORKING_DAYS       = daysInMonth - joining.getDate() + 1
+  }
+  // ────────────────────────────────────────────────────
 
   // Salary components — Full (CTC) values
   const fullBasic      = Number(emp.basic_salary)
@@ -66,11 +77,11 @@ export default function Payslip() {
   const netSalary      = Number(data.net_salary)
 
   // Present days + LOP from attendance
-  const presentDays    = data.present_days || WORKING_DAYS
+  const presentDays    = data.present_days || 0
   const lop            = Math.max(0, WORKING_DAYS - presentDays)
 
   // Actual earnings per component (prorated)
-  const ratio          = presentDays / WORKING_DAYS
+  const ratio          = presentDays / 30
   const actualBasic    = Math.round(fullBasic      * ratio)
   const actualHRA      = Math.round(fullHRA        * ratio)
   const actualCCA      = Math.round(fullCCA        * ratio)
