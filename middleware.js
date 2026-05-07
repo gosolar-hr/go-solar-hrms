@@ -24,7 +24,6 @@ export function middleware(request) {
     pathname.startsWith('/salary-statement') ||
     pathname.startsWith('/letters') ||
     pathname.startsWith('/payslip') ||
-    pathname.startsWith('/api/employees') ||
     pathname.startsWith('/api/attendance') ||
     pathname.startsWith('/api/payroll') ||
     pathname.startsWith('/api/letters') ||

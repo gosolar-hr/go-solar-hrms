@@ -42,15 +42,19 @@ export default function AMC() {
   const load = () => {
     setLoading(true)
     Promise.all([
-      fetch('/api/amc/sites').then(r => r.json()),
-      fetch('/api/amc/alerts').then(r => r.json()),
-      fetch('/api/employees').then(r => r.json()),
+      fetch('/api/amc/sites').then(r => r.ok ? r.json() : r.json().then(d => { throw new Error(d.error || 'Sites failed') })),
+      fetch('/api/amc/alerts').then(r => r.ok ? r.json() : r.json().then(d => { throw new Error(d.error || 'Alerts failed') })),
+      fetch('/api/employees').then(r => r.ok ? r.json() : r.json().then(d => { throw new Error(d.error || 'Employees failed') })),
     ]).then(([sitesData, alertsData, empsData]) => {
       setSites(Array.isArray(sitesData) ? sitesData : [])
       setAlerts(alertsData?.alerts || [])
       setAlertCounts(alertsData?.counts || {})
       setEmployees(Array.isArray(empsData) ? empsData : [])
       setLoading(false)
+    }).catch(err => {
+      console.error('AMC Load Error:', err)
+      setLoading(false)
+      setAlert({ type:'error', msg:'Failed to load data. Please refresh.' })
     })
   }
 

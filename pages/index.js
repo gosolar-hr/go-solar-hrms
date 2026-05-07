@@ -12,15 +12,18 @@ export default function Dashboard() {
 
   const [employees, setEmployees] = useState([])
   const [payroll,   setPayroll]   = useState([])
+  const [amcAlerts, setAmcAlerts] = useState(null)
   const [loading,   setLoading]   = useState(true)
 
   useEffect(() => {
     Promise.all([
       fetch('/api/employees').then(r => r.json()),
       fetch(`/api/payroll?month=${month}&year=${year}`).then(r => r.json()),
-    ]).then(([emp, pay]) => {
+      fetch('/api/amc/alerts').then(r => r.json()),
+    ]).then(([emp, pay, amc]) => {
       setEmployees(Array.isArray(emp) ? emp.filter(e => e.is_active) : [])
       setPayroll(Array.isArray(pay) ? pay : [])
+      setAmcAlerts(amc)
       setLoading(false)
     })
   }, [])
@@ -73,6 +76,17 @@ export default function Dashboard() {
               </div>
               <div className="stat-hint">Employee share</div>
             </div>
+            {amcAlerts && (
+              <Link href="/amc" style={{ textDecoration:'none' }}>
+                <div className="card stat-card" style={{ borderTop:'3px solid #F04438' }}>
+                  <div className="stat-label">O&M Alerts</div>
+                  <div className="stat-value" style={{ color:'#F04438' }}>
+                    {amcAlerts.counts?.expired || 0}
+                  </div>
+                  <div className="stat-hint">Expired AMC contracts</div>
+                </div>
+              </Link>
+            )}
           </div>
 
           {/* Payroll table */}
