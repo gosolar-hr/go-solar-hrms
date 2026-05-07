@@ -59,7 +59,7 @@ export default function Layout({ children }) {
       <aside className="sidebar">
         <div className="sidebar-brand">
           <div className="brand-icon-row">
-            <img src="/logo.jpg" className="brand-icon" alt="Go Solar" style={{ objectFit: 'contain', padding: '4px', background: '#f8f9fb' }} />
+            <img src="/logo.jpg" className="brand-icon" alt="Go Solar" style={{ objectFit: 'contain', background: 'var(--surface-2)' }} />
             <div>
               <div className="brand-name">Go Solar Solutions</div>
               <div className="brand-sub">Warrington Renewsol Pvt. Ltd</div>

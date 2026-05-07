@@ -8,11 +8,11 @@
   --accent-dark:  #EA6A05;
   --accent-glow:  rgba(249,115,22,0.12);
 
-  --bg:           #F4F6F9;
+  --bg:           #EAEFF4;
   --surface:      #FFFFFF;
-  --surface-2:    #F8F9FB;
-  --border:       #E4E7EC;
-  --border-light: #F2F4F7;
+  --surface-2:    #F0F3F7;
+  --border:       #DDE2E9;
+  --border-light: #E9EDF2;
 
   --text-primary:   #101828;
   --text-secondary: #475467;
@@ -82,12 +82,13 @@ html, body {
 }
 .brand-icon {
   width: 34px; height: 34px;
-  background: #f8f9fb;
+  background: var(--surface-2);
   border-radius: 9px;
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 3px 8px rgba(16,24,40,0.1);
   flex-shrink: 0;
   border: 1px solid var(--border-light);
+  padding: 4px;
 }
 .sidebar-brand .brand-name {
   font-size: 14px;
