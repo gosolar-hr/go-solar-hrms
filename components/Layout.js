@@ -110,6 +110,7 @@ export default function Layout({ children }) {
               fontSize:12, fontWeight:600,
               color:'var(--text-secondary)',
               cursor:'pointer', width:'100%', transition:'all 0.15s',
+              marginTop: 16,
             }}
             onMouseEnter={e => { e.currentTarget.style.background='var(--bg)'; e.currentTarget.style.borderColor='#D0D5DD' }}
             onMouseLeave={e => { e.currentTarget.style.background='none';      e.currentTarget.style.borderColor='var(--border)' }}
