@@ -9,14 +9,12 @@ import {
   calculateOtherDeductions,
 } from '../../../lib/payroll'
 
-const LATE_SLABS = { 0: 0.0, 20: 0.2, 30: 0.3, 50: 0.5 }
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const { month, year, late_mark_slab = 50 } = req.body
+  const { month, year } = req.body
 
   if (!month || !year) {
     return res.status(400).json({ error: 'month and year required' })
@@ -45,7 +43,6 @@ export default async function handler(req, res) {
     .eq('month', month)
     .eq('year',  year)
 
-  // Map draft by employee_id
   const draftMap = {}
   ;(draftEntries || []).forEach(d => { draftMap[d.employee_id] = d })
 
@@ -57,7 +54,7 @@ export default async function handler(req, res) {
 
   if (empError) return res.status(500).json({ error: empError.message })
 
-  // ── STEP 4: Fetch attendance ──────────────────────────
+  // ── STEP 4: Fetch attendance summary ─────────────────
   const { data: attendanceList, error: attError } = await supabaseAdmin
     .from('attendance')
     .select('*')
@@ -69,9 +66,24 @@ export default async function handler(req, res) {
   const attendanceMap = {}
   attendanceList.forEach(a => { attendanceMap[a.employee_id] = a })
 
-  const lateSlabPercent = LATE_SLABS[late_mark_slab] ?? 0.5
+  // ── STEP 5: Fetch late mark details (actual slabs) ────
+  const from = `${year}-${String(month).padStart(2,'0')}-01`
+  const to   = new Date(year, month, 0).toISOString().split('T')[0]
 
-  // ── STEP 5: Calculate payroll for each employee ───────
+  const { data: lateDetails } = await supabaseAdmin
+    .from('attendance_details')
+    .select('employee_id, salary_cut')
+    .gte('date', from)
+    .lte('date', to)
+    .gt('salary_cut', 0)
+
+  const lateByEmp = {}
+  ;(lateDetails || []).forEach(d => {
+    if (!lateByEmp[d.employee_id]) lateByEmp[d.employee_id] = []
+    lateByEmp[d.employee_id].push(Number(d.salary_cut))
+  })
+
+  // ── STEP 6: Calculate payroll for each employee ───────
   const payrollRows = []
   const results     = []
 
@@ -80,25 +92,41 @@ export default async function handler(req, res) {
       present_days: 30, leaves: 0, late_marks: 0
     }
 
-    // Pull from draft — these are the accumulated monthly values
     const draft         = draftMap[emp.id] || {}
     const overtimeHours = Number(draft.overtime_hours || 0)
     const incentive     = Number(draft.incentive      || 0)
     const loan          = Number(draft.loan           || 0)
     const advance       = Number(draft.advance        || 0)
 
-    // Calculate
+    const totalCTC = Number(emp.basic_salary||0) + Number(emp.hra||0) +
+                     Number(emp.cca||0) + Number(emp.conveyance||0) +
+                     Number(emp.allowances||0)
+    const perDay   = totalCTC / 30
+
+    // Late deduction from actual per-day slabs
+    const empLateSlabs = lateByEmp[emp.id] || []
+    const lateDeduction = Math.round(
+      empLateSlabs.reduce((sum, slab) => sum + (perDay * slab), 0) * 100
+    ) / 100
+
+    // Overtime
     const { overtimeAmount, hourlyRate } = calculateOvertime(emp, overtimeHours)
 
-    const { gross, lateDeduction, effectiveDays } = calculateGrossSalary(
-      emp, attendance, lateSlabPercent, incentive, overtimeAmount,
+    // Gross Salary (Deduction based)
+    const { gross, lwpDeduction } = calculateGrossSalary(
+      emp, attendance,
+      lateDeduction,
+      incentive, overtimeAmount,
       month, year
     )
 
     const pf   = calculatePF(emp)
     const esic = calculateESIC(emp, gross, overtimeAmount)
     const pt   = calculatePT(gross, month, emp.gender)
-    const otherDed = calculateOtherDeductions(emp, attendance, lateSlabPercent)
+    
+    // Display-only deductions
+    const otherDed = calculateOtherDeductions(emp, attendance, lateDeduction)
+
     const net  = calculateNetSalary({
       gross,
       pf,
@@ -138,15 +166,14 @@ export default async function handler(req, res) {
     })
   }
 
-  // ── STEP 6: Upsert payroll ────────────────────────────
+  // ── STEP 7: Upsert payroll ────────────────────────────
   const { error: payError } = await supabaseAdmin
     .from('payroll')
     .upsert(payrollRows, { onConflict: 'employee_id,month,year' })
 
   if (payError) return res.status(500).json({ error: payError.message })
 
-  // ── STEP 7: Lock the draft ────────────────────────────
-  // Build lock rows for all employees (even those without draft)
+  // ── STEP 8: Lock the draft ────────────────────────────
   const lockRows = employees.map(emp => ({
     employee_id   : emp.id,
     month,
@@ -164,7 +191,7 @@ export default async function handler(req, res) {
     .from('payroll_draft')
     .upsert(lockRows, { onConflict: 'employee_id,month,year' })
 
-  // ── STEP 8: Record loan/advance recoveries ────────────
+  // ── STEP 9: Record recoveries ─────────────────────────
   for (const row of payrollRows) {
     if (row.loan <= 0 && row.advance <= 0) continue
 
@@ -201,10 +228,7 @@ export default async function handler(req, res) {
           }], { onConflict: 'loan_id,month,year' })
 
         if (balance - actualRecovery <= 0) {
-          await supabaseAdmin
-            .from('employee_loans')
-            .update({ is_active: false })
-            .eq('id', loan.id)
+          await supabaseAdmin.from('employee_loans').update({ is_active: false }).eq('id', loan.id)
         }
         break
       }
@@ -233,10 +257,7 @@ export default async function handler(req, res) {
           }], { onConflict: 'advance_id,month,year' })
 
         if (balance - actualAdjustment <= 0) {
-          await supabaseAdmin
-            .from('employee_advances')
-            .update({ is_active: false })
-            .eq('id', adv.id)
+          await supabaseAdmin.from('employee_advances').update({ is_active: false }).eq('id', adv.id)
         }
         break
       }
