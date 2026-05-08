@@ -47,6 +47,8 @@ export default function Inventory() {
   const [movForm,    setMovForm]    = useState(EMPTY_MOV)
   const [search,     setSearch]     = useState('')
   const [catFilter,  setCatFilter]  = useState('all')
+  const [editItem,   setEditItem]   = useState(null)
+  const [editForm,   setEditForm]   = useState({})
 
   const load = () => {
     setLoading(true)
@@ -84,6 +86,29 @@ export default function Inventory() {
     setAlert({ type:'success', msg:`${data.item_name} added to inventory.` })
     setItemForm(EMPTY_ITEM)
     setShowAddItem(false)
+    load()
+  }
+
+  const saveEdit = async () => {
+    if (!editForm.item_name) return setAlert({ type:'error', msg:'Item name is required' })
+    setSaving(true)
+    const res = await fetch('/api/inventory/items', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        id           : editItem.id,
+        item_name    : editForm.item_name,
+        category     : editForm.category,
+        unit         : editForm.unit,
+        reorder_level: Number(editForm.reorder_level) || 0,
+        description  : editForm.description || '',
+      })
+    })
+    const data = await res.json()
+    setSaving(false)
+    if (!res.ok) return setAlert({ type:'error', msg: data.error })
+    setAlert({ type:'success', msg:`${data.item_name} updated successfully.` })
+    setEditItem(null)
+    setEditForm({})
     load()
   }
 
@@ -352,66 +377,139 @@ export default function Inventory() {
                     <th style={{ textAlign:'right' }}>Total (All Locations)</th>
                     <th>Status</th>
                     <th>Unit</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredItems.map(item => {
                     const cat = getCatConfig(item.category)
                     return (
-                      <tr key={item.id}>
-                        <td style={{ fontFamily:'DM Mono,monospace', fontSize:12, color:'var(--text-muted)' }}>
-                          {item.item_code}
-                        </td>
-                        <td style={{ fontWeight:500 }}>
-                          {item.item_name}
-                          {item.description && (
-                            <div style={{ fontSize:11, color:'var(--text-muted)' }}>{item.description}</div>
-                          )}
-                        </td>
-                        <td>
-                          <span style={{
-                            background:`${cat.color}18`, color:cat.color,
-                            border:`1px solid ${cat.color}35`,
-                            padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:600,
-                          }}>
-                            {cat.label}
-                          </span>
-                        </td>
-                        <td style={{ textAlign:'right', fontFamily:'DM Mono,monospace',
-                          fontWeight:700, fontSize:14,
-                          color: item.is_low ? '#F04438' : item.ho_stock > 0 ? '#101828' : '#98A2B3' }}>
-                          {item.ho_stock}
-                        </td>
-                        <td style={{ textAlign:'right', fontFamily:'DM Mono,monospace',
-                          fontSize:13, color:'var(--text-muted)' }}>
-                          {item.reorder_level || '—'}
-                        </td>
-                        <td style={{ textAlign:'right', fontFamily:'DM Mono,monospace', fontSize:13 }}>
-                          {item.total_stock}
-                        </td>
-                        <td>
-                          {item.is_low ? (
-                            <span style={{ background:'#FEF3F2', color:'#B42318',
-                              border:'1px solid #FECDCA', padding:'2px 8px',
-                              borderRadius:20, fontSize:11, fontWeight:600 }}>
-                              ⚠ Low Stock
+                      <React.Fragment key={item.id}>
+                        <tr>
+                          <td style={{ fontFamily:'DM Mono,monospace', fontSize:12, color:'var(--text-muted)' }}>
+                            {item.item_code}
+                          </td>
+                          <td style={{ fontWeight:500 }}>
+                            {item.item_name}
+                            {item.description && (
+                              <div style={{ fontSize:11, color:'var(--text-muted)' }}>{item.description}</div>
+                            )}
+                          </td>
+                          <td>
+                            <span style={{
+                              background:`${cat.color}18`, color:cat.color,
+                              border:`1px solid ${cat.color}35`,
+                              padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:600,
+                            }}>
+                              {cat.label}
                             </span>
-                          ) : item.ho_stock > 0 ? (
-                            <span style={{ background:'#ECFDF3', color:'#027A48',
-                              border:'1px solid #A9EFC5', padding:'2px 8px',
-                              borderRadius:20, fontSize:11, fontWeight:600 }}>
-                              ✓ In Stock
-                            </span>
-                          ) : (
-                            <span style={{ background:'var(--surface-2)', color:'var(--text-muted)',
-                              border:'1px solid var(--border)', padding:'2px 8px',
-                              borderRadius:20, fontSize:11, fontWeight:600 }}>
-                              Out of Stock
-                            </span>
-                          )}
-                        </td>
-                        <td style={{ color:'var(--text-muted)', fontSize:12 }}>{item.unit}</td>
-                      </tr>
+                          </td>
+                          <td style={{ textAlign:'right', fontFamily:'DM Mono,monospace',
+                            fontWeight:700, fontSize:14,
+                            color: item.is_low ? '#F04438' : item.ho_stock > 0 ? '#101828' : '#98A2B3' }}>
+                            {item.ho_stock}
+                          </td>
+                          <td style={{ textAlign:'right', fontFamily:'DM Mono,monospace',
+                            fontSize:13, color:'var(--text-muted)' }}>
+                            {item.reorder_level || '—'}
+                          </td>
+                          <td style={{ textAlign:'right', fontFamily:'DM Mono,monospace', fontSize:13 }}>
+                            {item.total_stock}
+                          </td>
+                          <td>
+                            {item.is_low ? (
+                              <span style={{ background:'#FEF3F2', color:'#B42318',
+                                border:'1px solid #FECDCA', padding:'2px 8px',
+                                borderRadius:20, fontSize:11, fontWeight:600 }}>
+                                ⚠ Low Stock
+                              </span>
+                            ) : item.ho_stock > 0 ? (
+                              <span style={{ background:'#ECFDF3', color:'#027A48',
+                                border:'1px solid #A9EFC5', padding:'2px 8px',
+                                borderRadius:20, fontSize:11, fontWeight:600 }}>
+                                ✓ In Stock
+                              </span>
+                            ) : (
+                              <span style={{ background:'var(--surface-2)', color:'var(--text-muted)',
+                                border:'1px solid var(--border)', padding:'2px 8px',
+                                borderRadius:20, fontSize:11, fontWeight:600 }}>
+                                Out of Stock
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ color:'var(--text-muted)', fontSize:12 }}>{item.unit}</td>
+                          <td>
+                            <button
+                              onClick={() => { setEditItem(item); setEditForm({
+                                item_name    : item.item_name,
+                                category     : item.category,
+                                unit         : item.unit,
+                                reorder_level: item.reorder_level || '',
+                                description  : item.description  || '',
+                              }); setShowAddItem(false); setShowMovForm(false); }}
+                              style={{ padding:'4px 12px', fontSize:12, fontWeight:600,
+                                borderRadius:6, border:'1px solid var(--border)',
+                                background:'#fff', cursor:'pointer', color:'var(--text-primary)' }}>
+                              ✏ Edit
+                            </button>
+                          </td>
+                        </tr>
+                        {/* Inline edit row */}
+                        {editItem?.id === item.id && (
+                          <tr>
+                            <td colSpan={9} style={{ padding:0, background:'#F8F9FB',
+                              borderBottom:'2px solid var(--accent)' }}>
+                              <div style={{ padding:'16px 20px' }}>
+                                <div style={{ fontWeight:700, fontSize:13, marginBottom:14,
+                                  color:'var(--accent)' }}>
+                                  Edit Item — {editItem.item_code}
+                                </div>
+                                <div className="form-grid">
+                                  <div className="form-group">
+                                    <label>Item Name *</label>
+                                    <input name="item_name" value={editForm.item_name}
+                                      onChange={e => setEditForm(f => ({ ...f, item_name: e.target.value }))} />
+                                  </div>
+                                  <div className="form-group">
+                                    <label>Category *</label>
+                                    <select name="category" value={editForm.category}
+                                      onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))}>
+                                      {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                                    </select>
+                                  </div>
+                                  <div className="form-group">
+                                    <label>Unit</label>
+                                    <select name="unit" value={editForm.unit}
+                                      onChange={e => setEditForm(f => ({ ...f, unit: e.target.value }))}>
+                                      {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                                    </select>
+                                  </div>
+                                  <div className="form-group">
+                                    <label>Reorder Level</label>
+                                    <input name="reorder_level" type="number"
+                                      value={editForm.reorder_level}
+                                      onChange={e => setEditForm(f => ({ ...f, reorder_level: e.target.value }))} />
+                                  </div>
+                                  <div className="form-group">
+                                    <label>Description</label>
+                                    <input name="description" value={editForm.description}
+                                      onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} />
+                                  </div>
+                                </div>
+                                <div style={{ marginTop:12, display:'flex', gap:8 }}>
+                                  <button className="btn btn-primary" onClick={saveEdit} disabled={saving}>
+                                    {saving ? 'Saving...' : 'Save Changes'}
+                                  </button>
+                                  <button className="btn btn-outline"
+                                    onClick={() => { setEditItem(null); setEditForm({}) }}>
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     )
                   })}
                 </tbody>
