@@ -77,11 +77,15 @@ export default function Payslip() {
   const overtimeHours   = Number(data.overtime_hours    || 0)
 
   // Attendance
-  const presentDays = data.present_days || 0
-  const lop         = Math.max(0, WORKING_DAYS - presentDays)
+  const rawPresentDays = data.present_days || 0
+  const presentDays = rawPresentDays > 0
+    ? rawPresentDays
+    : Math.round((actualGross / fullGross) * WORKING_DAYS)
+
+  const lop = Math.max(0, WORKING_DAYS - presentDays)
 
   // Prorated actual per component
-  const ratio      = fullGross > 0 ? actualGross / fullGross : 0
+  const ratio = fullGross > 0 ? actualGross / fullGross : 0
   const actualBasic = Math.round(fullBasic      * ratio)
   const actualHRA   = Math.round(fullHRA        * ratio)
   const actualCCA   = Math.round(fullCCA        * ratio)
