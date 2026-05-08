@@ -29,7 +29,9 @@ export function middleware(request) {
     pathname.startsWith('/api/letters') ||
     pathname.startsWith('/api/loans') ||
     pathname.startsWith('/api/advances') ||
-    pathname.startsWith('/api/holidays')
+    pathname.startsWith('/api/holidays') ||
+    pathname.startsWith('/inventory') ||
+    pathname.startsWith('/api/inventory')
 
   // Technician tries to access HR-only page → redirect to AMC
   if (role === 'tech' && isHROnly) {
