@@ -120,7 +120,7 @@ export default async function handler(req, res) {
       month, year
     )
 
-    const pf   = calculatePF(emp)
+    const pf   = calculatePF(emp, gross)
     const esic = calculateESIC(emp, gross, overtimeAmount)
     const pt   = calculatePT(gross, month, emp.gender)
     

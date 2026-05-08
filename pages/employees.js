@@ -6,7 +6,7 @@ const EMPTY = {
   emp_code:'', name:'', email:'', phone:'',
   date_of_joining:'', designation:'', department:'',
   basic_salary:'', hra:'', cca:'', conveyance:'', allowances:'',
-  pf_applicable: true, gender:'male',
+  pf_applicable: true, esic_applicable: true, gender:'male',
   pan:'', aadhaar:'', bank_account:'',
   ifsc_code:'', bank_branch:'', bank_location:'',
 }
@@ -183,15 +183,24 @@ export default function Employees() {
               <input name="bank_location" placeholder="Mumbai"
                 value={form.bank_location} onChange={onChange} />
             </div>
-            <div className="form-group full" style={{
-              flexDirection:'row', alignItems:'center', gap:10 }}>
-              <input type="checkbox" name="pf_applicable" id="pf_new"
-                checked={form.pf_applicable} onChange={onChange}
-                style={{ width:16, height:16, accentColor:'var(--accent)' }} />
-              <label htmlFor="pf_new" style={{ margin:0, cursor:'pointer' }}>
-                PF Applicable
-              </label>
-            </div>
+              <div className="form-group full" style={{
+                flexDirection:'row', alignItems:'center', gap:10 }}>
+                <input type="checkbox" name="pf_applicable" id="pf_new"
+                  checked={form.pf_applicable} onChange={onChange}
+                  style={{ width:16, height:16, accentColor:'var(--accent)' }} />
+                <label htmlFor="pf_new" style={{ margin:0, cursor:'pointer' }}>
+                  PF Applicable
+                </label>
+              </div>
+              <div className="form-group full" style={{
+                flexDirection:'row', alignItems:'center', gap:10 }}>
+                <input type="checkbox" name="esic_applicable" id="esic_new"
+                  checked={form.esic_applicable} onChange={onChange}
+                  style={{ width:16, height:16, accentColor:'var(--accent)' }} />
+                <label htmlFor="esic_new" style={{ margin:0, cursor:'pointer' }}>
+                  ESIC Applicable
+                </label>
+              </div>
           </div>
           <div className="divider" />
           <div className="flex gap-8">
@@ -227,6 +236,7 @@ export default function Employees() {
                   <th>Other Allow.</th>
                   <th>Monthly Gross</th>
                   <th>PF</th>
+                  <th>ESIC</th>
                   <th style={{ width:80 }}></th>
                 </tr>
               </thead>
@@ -263,6 +273,11 @@ export default function Employees() {
                       <span className={`badge ${e.pf_applicable
                         ? 'badge-green' : 'badge-red'}`}>
                         {e.pf_applicable ? 'Yes' : 'No'}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`badge ${e.esic_applicable ? 'badge-green' : 'badge-red'}`}>
+                        {e.esic_applicable ? 'Yes' : 'No'}
                       </span>
                     </td>
                     <td>
