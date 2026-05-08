@@ -2,13 +2,22 @@ import { useEffect, useState } from 'react'
 import Layout from '../components/Layout'
 
 const CATEGORIES = [
-  { value:'panel',      label:'Solar Panel',      color:'#F97316' },
-  { value:'inverter',   label:'Inverter',          color:'#2E90FA' },
-  { value:'cable',      label:'Cable/Wire',        color:'#12B76A' },
-  { value:'mounting',   label:'Mounting Structure',color:'#7F56D9' },
-  { value:'electrical', label:'Electrical',        color:'#F04438' },
-  { value:'tools',      label:'Tools',             color:'#667085' },
-  { value:'other',      label:'Other',             color:'#98A2B3' },
+  { value:'solar_pv_modules',   label:'Solar PV Modules',   color:'#F97316' },
+  { value:'inverter',           label:'Inverter',            color:'#2E90FA' },
+  { value:'acdb',               label:'ACDB',                color:'#F04438' },
+  { value:'dcdb',               label:'DCDB',                color:'#B42318' },
+  { value:'generation_meter',   label:'Generation Meter',    color:'#7F56D9' },
+  { value:'net_meter',          label:'Net Meter',           color:'#6941C6' },
+  { value:'z_clamp',            label:'Z-Clamp',             color:'#12B76A' },
+  { value:'mid_clamp',          label:'Mid-Clamp',           color:'#027A48' },
+  { value:'table_structure',    label:'Table Structure',     color:'#667085' },
+  { value:'ac_cable',           label:'AC Cable',            color:'#1D4ED8' },
+  { value:'dc_cable',           label:'DC Cable',            color:'#1570EF' },
+  { value:'apdm_rubber',        label:'APDM Rubber',         color:'#344054' },
+  { value:'lightning_arrester', label:'Lightning Arrester',  color:'#F79009' },
+  { value:'earthing_rod',       label:'Earthing Rod',        color:'#854D0E' },
+  { value:'gi_earthing_strip',  label:'GI Earthing Strip',   color:'#92400E' },
+  { value:'earthing_epoxy',     label:'Earthing Epoxy',      color:'#78350F' },
 ]
 
 const UNITS   = ['pcs','mtr','kg','set','roll','box','ltr','pair']
