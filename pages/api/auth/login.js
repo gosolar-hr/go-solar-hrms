@@ -3,10 +3,10 @@ export default async function handler(req, res) {
 
   const { email, password, role = 'hr' } = req.body
 
-  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'gosolar@2026'
-  const TECH_PASSWORD  = process.env.TECH_PASSWORD  || 'gosolar@2026'
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'LiveLife@77'
+  const TECH_PASSWORD  = process.env.TECH_PASSWORD  || 'Tech@321'
   const HR_EMAIL       = process.env.HR_EMAIL        || 'hr@gosolar.co.in'
-  const TECH_EMAIL     = process.env.TECH_EMAIL      || 'tech@gosolar.co.in'
+  const TECH_EMAIL     = process.env.TECH_EMAIL      || 'tech@go-solar.co'
 
   if (role === 'hr') {
     if (email !== HR_EMAIL) {
