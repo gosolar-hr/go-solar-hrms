@@ -6,10 +6,9 @@ export default async function handler(req, res) {
   const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'gosolar@2026'
   const TECH_PASSWORD  = process.env.TECH_PASSWORD  || 'gosolar@2026'
   const HR_EMAIL       = process.env.HR_EMAIL        || 'hr@gosolar.co.in'
-  const TECH_EMAIL     = process.env.TECH_EMAIL      || 'technician@gosolar.co.in'
+  const TECH_EMAIL     = process.env.TECH_EMAIL      || 'tech@go-solar.co.in'
 
   if (role === 'hr') {
-    // HR login — email + password
     if (email !== HR_EMAIL) {
       return res.status(401).json({ error: 'Invalid email address' })
     }
@@ -24,7 +23,12 @@ export default async function handler(req, res) {
   }
 
   if (role === 'technician') {
-    // Technician login — password only
+    if (!email) {
+      return res.status(401).json({ error: 'Email address is required' })
+    }
+    if (email !== TECH_EMAIL) {
+      return res.status(401).json({ error: 'Invalid email address' })
+    }
     if (password !== TECH_PASSWORD) {
       return res.status(401).json({ error: 'Incorrect password' })
     }

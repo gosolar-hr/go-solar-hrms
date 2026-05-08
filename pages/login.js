@@ -119,13 +119,13 @@ export default function Login() {
           margin-bottom: 64px;
         }
         .brand-icon {
-          width: 42px; height: 42px;
-          background: var(--surface-2);
-          border-radius: 11px;
-          display: flex; align-items: center; justify-content: center;
-          box-shadow: 0 4px 12px rgba(16,24,40,0.1);
+          width: 48px;
+          height: 48px;
+          border-radius: 10px;
+          object-fit: contain;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+          background: #fff;
           border: 1px solid #E4E7EC;
-          padding: 6px;
         }
         .brand-name { font-size: 15px; font-weight: 700; color: #101828; line-height: 1.2; }
         .brand-sub  { font-size: 11px; color: #98A2B3; margin-top: 2px; }
@@ -410,7 +410,26 @@ export default function Login() {
           <div className="glow" />
           <div className="left-inner">
             <div className="brand">
-              <img src="/logo.jpg" className="brand-icon" alt="Go Solar" style={{ objectFit: 'contain' }} />
+              <img
+                src="/logo.jpg"
+                className="brand-icon"
+                alt="Go Solar Solutions"
+                onError={e => {
+                  // Fallback if logo fails to load
+                  e.target.style.display = 'none'
+                  e.target.nextSibling.style.display = 'flex'
+                }}
+              />
+              {/* Fallback icon — hidden unless logo fails */}
+              <div style={{
+                display     : 'none',
+                width       : 48, height: 48,
+                background  : 'linear-gradient(135deg, #F97316, #EA6A05)',
+                borderRadius: 10,
+                alignItems  : 'center',
+                justifyContent: 'center',
+                fontSize    : 20, fontWeight: 800, color: '#fff',
+              }}>G</div>
               <div>
                 <div className="brand-name">Go Solar Solutions</div>
                 <div className="brand-sub">Warrington Renewsol Pvt. Ltd</div>
@@ -462,7 +481,7 @@ export default function Login() {
               <button
                 type="button"
                 className={`role-tab ${role === 'technician' ? 'active' : ''}`}
-                onClick={() => { setRole('technician'); setError(''); setEmail(''); setPw('') }}
+                onClick={() => { setRole('technician'); setError(''); setPw('') }}
               >
                 🔧 Technician
               </button>
@@ -479,28 +498,28 @@ export default function Login() {
               </div>
 
               <form onSubmit={onSubmit}>
-                {role === 'hr' && (
-                  <div className="field">
-                    <label>Email Address</label>
-                    <div className="input-wrap">
-                      <span className="input-icon">
-                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                      </span>
-                      <input
-                        type="email"
-                        placeholder="Enter your email address"
-                        value={email}
-                        onChange={e => { setEmail(e.target.value); setError('') }}
-                        autoFocus={role === 'hr'}
-                        id="email"
-                        name="email"
-                        autoComplete="email"
-                      />
-                    </div>
+                <div className="field">
+                  <label>Email Address</label>
+                  <div className="input-wrap">
+                    <span className="input-icon">
+                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round"
+                          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    </span>
+                    <input
+                      type="email"
+                      placeholder="Enter your email address"
+                      value={email}
+                      onChange={e => { setEmail(e.target.value); setError('') }}
+                      autoFocus
+                      id="email"
+                      name="email"
+                      autoComplete="email"
+                    />
                   </div>
-                )}
+                </div>
 
                 <div className="field">
                   <label>Password</label>
