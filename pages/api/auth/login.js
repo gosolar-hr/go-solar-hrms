@@ -6,7 +6,7 @@ export default async function handler(req, res) {
   const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'gosolar@2026'
   const TECH_PASSWORD  = process.env.TECH_PASSWORD  || 'gosolar@2026'
   const HR_EMAIL       = process.env.HR_EMAIL        || 'hr@gosolar.co.in'
-  const TECH_EMAIL     = process.env.TECH_EMAIL      || 'tech@go-solar.co.in'
+  const TECH_EMAIL     = process.env.TECH_EMAIL      || 'tech@gosolar.co.in'
 
   if (role === 'hr') {
     if (email !== HR_EMAIL) {
