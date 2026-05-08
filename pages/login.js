@@ -123,9 +123,6 @@ export default function Login() {
           height: 48px;
           border-radius: 10px;
           object-fit: contain;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.10);
-          background: #fff;
-          border: 1px solid #E4E7EC;
         }
         .brand-name { font-size: 15px; font-weight: 700; color: #101828; line-height: 1.2; }
         .brand-sub  { font-size: 11px; color: #98A2B3; margin-top: 2px; }
@@ -414,22 +411,7 @@ export default function Login() {
                 src="/logo.jpg"
                 className="brand-icon"
                 alt="Go Solar Solutions"
-                onError={e => {
-                  // Fallback if logo fails to load
-                  e.target.style.display = 'none'
-                  e.target.nextSibling.style.display = 'flex'
-                }}
               />
-              {/* Fallback icon — hidden unless logo fails */}
-              <div style={{
-                display     : 'none',
-                width       : 48, height: 48,
-                background  : 'linear-gradient(135deg, #F97316, #EA6A05)',
-                borderRadius: 10,
-                alignItems  : 'center',
-                justifyContent: 'center',
-                fontSize    : 20, fontWeight: 800, color: '#fff',
-              }}>G</div>
               <div>
                 <div className="brand-name">Go Solar Solutions</div>
                 <div className="brand-sub">Warrington Renewsol Pvt. Ltd</div>
