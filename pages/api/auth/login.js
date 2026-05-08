@@ -1,7 +1,9 @@
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  const { email, password, role = 'hr' } = req.body
+  const email    = (req.body.email    || '').trim()
+  const password = (req.body.password || '').trim()
+  const role     = (req.body.role     || 'hr')
 
   const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'LiveLife@77'
   const TECH_PASSWORD  = process.env.TECH_PASSWORD  || 'Tech@321'
