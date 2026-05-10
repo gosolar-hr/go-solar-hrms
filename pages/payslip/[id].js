@@ -85,7 +85,10 @@ export default function Payslip() {
   const lop = Math.max(0, WORKING_DAYS - presentDays)
 
   // Prorated actual per component
-  const ratio = fullGross > 0 ? actualGross / fullGross : 0
+  // HIGH #7: Exclude OT and Incentive from ratio calculation to prevent inflation
+  const earnedCTCComponents = actualGross - overtimeAmount - incentive
+  const ratio = fullGross > 0 ? earnedCTCComponents / fullGross : 0
+  
   const actualBasic = Math.round(fullBasic      * ratio)
   const actualHRA   = Math.round(fullHRA        * ratio)
   const actualCCA   = Math.round(fullCCA        * ratio)

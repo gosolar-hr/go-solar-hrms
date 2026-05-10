@@ -68,7 +68,8 @@ export default async function handler(req, res) {
 
   // ── STEP 5: Fetch late mark details (actual slabs) ────
   const from = `${year}-${String(month).padStart(2,'0')}-01`
-  const to   = new Date(year, month, 0).toISOString().split('T')[0]
+  const lastDay = new Date(year, month, 0).getDate()
+  const to   = `${year}-${String(month).padStart(2,'0')}-${lastDay}`
 
   const { data: lateDetails } = await supabaseAdmin
     .from('attendance_details')
@@ -101,7 +102,10 @@ export default async function handler(req, res) {
     const totalCTC = Number(emp.basic_salary||0) + Number(emp.hra||0) +
                      Number(emp.cca||0) + Number(emp.conveyance||0) +
                      Number(emp.allowances||0)
-    const perDay   = totalCTC / 30
+    
+    // HIGH #11: Use actual days in month
+    const daysInMonth = new Date(year, month, 0).getDate()
+    const perDay   = totalCTC / daysInMonth
 
     // Late deduction from actual per-day slabs
     const empLateSlabs = lateByEmp[emp.id] || []
@@ -109,8 +113,8 @@ export default async function handler(req, res) {
       empLateSlabs.reduce((sum, slab) => sum + (perDay * slab), 0) * 100
     ) / 100
 
-    // Overtime
-    const { overtimeAmount, hourlyRate } = calculateOvertime(emp, overtimeHours)
+    // Overtime — pass month/year context
+    const { overtimeAmount, hourlyRate } = calculateOvertime({ ...emp, payrollMonth: month, payrollYear: year }, overtimeHours)
 
     // Gross Salary (Deduction based)
     const { gross, lwpDeduction } = calculateGrossSalary(
@@ -230,7 +234,9 @@ export default async function handler(req, res) {
         if (balance - actualRecovery <= 0) {
           await supabaseAdmin.from('employee_loans').update({ is_active: false }).eq('id', loan.id)
         }
-        break
+
+        row.loan -= actualRecovery
+        if (row.loan <= 0) break
       }
     }
 
@@ -259,7 +265,9 @@ export default async function handler(req, res) {
         if (balance - actualAdjustment <= 0) {
           await supabaseAdmin.from('employee_advances').update({ is_active: false }).eq('id', adv.id)
         }
-        break
+
+        row.advance -= actualAdjustment
+        if (row.advance <= 0) break
       }
     }
   }

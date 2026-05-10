@@ -83,6 +83,7 @@ export default async function handler(req, res) {
 
   // ─────────────────────────────────────────────────────
   // PATCH — Reopen locked payroll (admin only)
+  // HIGH #10: Reactivate loans/advances and cleanup recoveries
   // ─────────────────────────────────────────────────────
   if (req.method === 'PATCH') {
     const { month, year, action } = req.body
@@ -91,6 +92,35 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid action' })
     }
 
+    // 1. Identify loans/advances that were closed in this month
+    const { data: recs } = await supabaseAdmin
+      .from('loan_recoveries')
+      .select('loan_id')
+      .eq('month', month)
+      .eq('year',  year)
+
+    const { data: adjs } = await supabaseAdmin
+      .from('advance_adjustments')
+      .select('advance_id')
+      .eq('month', month)
+      .eq('year',  year)
+
+    // 2. Reactivate those loans and advances
+    if (recs?.length) {
+      const loanIds = [...new Set(recs.map(r => r.loan_id))]
+      await supabaseAdmin.from('employee_loans').update({ is_active: true }).in('id', loanIds)
+    }
+    if (adjs?.length) {
+      const advIds = [...new Set(adjs.map(a => a.advance_id))]
+      await supabaseAdmin.from('employee_advances').update({ is_active: true }).in('id', advIds)
+    }
+
+    // 3. Delete recoveries and payroll records
+    await supabaseAdmin.from('loan_recoveries').delete().eq('month', month).eq('year', year)
+    await supabaseAdmin.from('advance_adjustments').delete().eq('month', month).eq('year', year)
+    await supabaseAdmin.from('payroll').delete().eq('month', month).eq('year', year)
+
+    // 4. Unlock the draft
     const { error } = await supabaseAdmin
       .from('payroll_draft')
       .update({ is_locked: false, locked_at: null })
@@ -100,7 +130,7 @@ export default async function handler(req, res) {
     if (error) return res.status(500).json({ error: error.message })
 
     return res.status(200).json({
-      message: `Payroll for ${month}/${year} reopened for editing`
+      message: `Payroll for ${month}/${year} reopened. Recoveries cleared and loans reactivated.`
     })
   }
 

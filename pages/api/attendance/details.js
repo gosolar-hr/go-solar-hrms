@@ -15,7 +15,8 @@ export default async function handler(req, res) {
 
     // Build date range for the month
     const from = `${year}-${String(month).padStart(2,'0')}-01`
-    const to   = new Date(year, month, 0).toISOString().split('T')[0] // last day
+    const lastDay = new Date(year, month, 0).getDate()
+    const to   = `${year}-${String(month).padStart(2,'0')}-${lastDay}`
 
     const { data, error } = await supabaseAdmin
       .from('attendance_details')
@@ -54,7 +55,8 @@ export default async function handler(req, res) {
     const month = parseInt(date.split('-')[1])
     const year  = parseInt(date.split('-')[0])
     const from  = `${year}-${String(month).padStart(2,'0')}-01`
-    const to    = new Date(year, month, 0).toISOString().split('T')[0]
+    const lastDayRec = new Date(year, month, 0).getDate()
+    const to    = `${year}-${String(month).padStart(2,'0')}-${lastDayRec}`
 
     // ── Sandwich Rule Check ──────────────────────────────────
     const sandwichDates = await checkSandwichRule(
@@ -124,7 +126,8 @@ export default async function handler(req, res) {
 
 async function checkSandwichRule(employee_id, date, year, month) {
   const from = `${year}-${String(month).padStart(2,'0')}-01`
-  const to   = new Date(year, month, 0).toISOString().split('T')[0]
+  const lastDay = new Date(year, month, 0).getDate()
+  const to   = `${year}-${String(month).padStart(2,'0')}-${lastDay}`
 
   const { data: allDays } = await supabaseAdmin
     .from('attendance_details')
@@ -140,17 +143,26 @@ async function checkSandwichRule(employee_id, date, year, month) {
   const WEEKOFF  = new Set(['WO', 'W/O', 'H'])
   const sandwich = []
 
-  for (let i = 1; i < allDays.length - 1; i++) {
-    const prev = allDays[i - 1]
-    const curr = allDays[i]
-    const next = allDays[i + 1]
+  // HIGH #6: Improved sandwich rule to handle consecutive weekoffs/holidays
+  for (let i = 0; i < allDays.length; i++) {
+    if (WEEKOFF.has(allDays[i].status)) {
+      let start = i
+      while (i < allDays.length && WEEKOFF.has(allDays[i].status)) {
+        i++
+      }
+      let end = i - 1
 
-    if (
-      WEEKOFF.has(curr.status) &&
-      ABSENT.has(prev.status)  &&
-      ABSENT.has(next.status)
-    ) {
-      sandwich.push(curr.date)
+      // Check day before sequence and day after
+      if (start > 0 && end < allDays.length - 1) {
+        const prevDayStatus = (allDays[start - 1].status || '').toUpperCase()
+        const nextDayStatus = (allDays[end + 1].status   || '').toUpperCase()
+
+        if (ABSENT.has(prevDayStatus) && ABSENT.has(nextDayStatus)) {
+          for (let k = start; k <= end; k++) {
+            sandwich.push(allDays[k].date)
+          }
+        }
+      }
     }
   }
 

@@ -24,7 +24,12 @@ export default async function handler(req, res) {
   const validDates = dates.filter(date => {
     if (!joiningDate) return true
     // Compare date strings (YYYY-MM-DD)
-    return date >= joiningDate.toISOString().split('T')[0]
+    const d = new Date(joiningDate)
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const r = String(d.getDate()).padStart(2, '0')
+    const joinDateStr = `${y}-${m}-${r}`
+    return date >= joinDateStr
   })
 
   // Upsert valid days in one DB call
@@ -59,7 +64,8 @@ export default async function handler(req, res) {
 
   // Recalculate summary ONCE from all days in the month
   const from = `${year}-${String(month).padStart(2,'0')}-01`
-  const to   = new Date(year, month, 0).toISOString().split('T')[0]
+  const lastDay = new Date(year, month, 0).getDate()
+  const to   = `${year}-${String(month).padStart(2,'0')}-${lastDay}`
 
   const { data: allDays } = await supabaseAdmin
     .from('attendance_details')

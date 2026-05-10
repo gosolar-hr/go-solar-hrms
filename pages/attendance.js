@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import Layout from '../components/Layout'
-import { getWeekOffDatesSync } from '../lib/weekoffs'
+import { getWeekOffDatesSync } from '../lib/weekoffsSync'
 
 const MONTHS = ['January','February','March','April','May','June',
                 'July','August','September','October','November','December']

@@ -75,24 +75,38 @@ async function generateVisits(site_id, contract_id, start, end, frequency) {
 
   const monthsInterval = intervals[frequency] || 3
   let current = new Date(startDate)
+  // HIGH #9: Set to 1st to avoid month-skipping on 31st overflows
+  const targetDay = startDate.getDate()
 
   while (current <= endDate) {
-    visits.push({
-      site_id,
-      contract_id,
-      scheduled_date : current.toISOString().split('T')[0],
-      status         : 'scheduled',
-      checklist      : {
-        panel_cleaning     : false,
-        inverter_check     : false,
-        battery_voltage    : false,
-        dc_wiring          : false,
-        ac_output          : false,
-        performance_review : false,
-        earthing_check     : false,
-        thermographic_scan : false,
-      }
-    })
+    // Generate the date for this specific month, capping at last day of month
+    const year = current.getFullYear()
+    const month = current.getMonth()
+    const lastDayOfMonth = new Date(year, month + 1, 0).getDate()
+    const dayToSet = Math.min(targetDay, lastDayOfMonth)
+    
+    const visitDate = new Date(year, month, dayToSet)
+    if (visitDate <= endDate) {
+      visits.push({
+        site_id,
+        contract_id,
+        scheduled_date : `${year}-${String(month + 1).padStart(2,'0')}-${String(dayToSet).padStart(2,'0')}`,
+        status         : 'scheduled',
+        checklist      : {
+          panel_cleaning     : false,
+          inverter_check     : false,
+          battery_voltage    : false,
+          dc_wiring          : false,
+          ac_output          : false,
+          performance_review : false,
+          earthing_check     : false,
+          thermographic_scan : false,
+        }
+      })
+    }
+    
+    // Move to next interval, safely from 1st of current month
+    current = new Date(year, month, 1)
     current.setMonth(current.getMonth() + monthsInterval)
   }
 

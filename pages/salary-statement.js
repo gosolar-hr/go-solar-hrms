@@ -203,6 +203,17 @@ export default function SalaryStatement() {
                                  + Number(r.pt_deduction||0) + Number(r.tds_deduction||0)
                                  + Number(r.loan||0) + Number(r.advance||0)
                                  + Number(r.other_deductions||0)
+                  const fullGross = Number(e?.basic_salary||0) + Number(e?.hra||0) + Number(e?.cca||0) + 
+                                   Number(e?.conveyance||0) + Number(e?.allowances||0)
+                  const earnedCTC = Number(r.gross_salary) - Number(r.overtime_amount||0) - Number(r.incentive||0)
+                  const ratio = fullGross > 0 ? earnedCTC / fullGross : 0
+
+                  const earnedBasic = Math.round(Number(e?.basic_salary||0) * ratio)
+                  const earnedHRA   = Math.round(Number(e?.hra||0)          * ratio)
+                  const earnedCCA   = Math.round(Number(e?.cca||0)          * ratio)
+                  const earnedConv  = Math.round(Number(e?.conveyance||0)   * ratio)
+                  const earnedAllow = Math.round(Number(e?.allowances||0)   * ratio)
+
                   return (
                     <tr key={r.id}>
                       {/* Employee Details */}
@@ -225,12 +236,12 @@ export default function SalaryStatement() {
                       {/* Attendance */}
                       <td>{r.present_days || 30}</td>
                       <td style={{ color: lop > 0 ? '#c00' : '#999' }}>{lop}</td>
-                      {/* Earnings */}
-                      <td className="td-earn">{fmt(e?.basic_salary || 0)}</td>
-                      <td className="td-earn">{fmt(e?.hra          || 0)}</td>
-                      <td className="td-earn">{fmt(e?.cca          || 0)}</td>
-                      <td className="td-earn">{fmt(e?.conveyance   || 0)}</td>
-                      <td className="td-earn">{fmt(e?.allowances   || 0)}</td>
+                      {/* Earnings — HIGH #8: Show Earned (Prorated) components */}
+                      <td className="td-earn">{fmt(earnedBasic)}</td>
+                      <td className="td-earn">{fmt(earnedHRA)}</td>
+                      <td className="td-earn">{fmt(earnedCCA)}</td>
+                      <td className="td-earn">{fmt(earnedConv)}</td>
+                      <td className="td-earn">{fmt(earnedAllow)}</td>
                       <td className="td-earn">{fmt(r.overtime_amount || 0)}</td>
                       <td className="td-earn">{fmt(r.incentive      || 0)}</td>
                       <td className="td-earn td-gross">{fmt(r.gross_salary)}</td>

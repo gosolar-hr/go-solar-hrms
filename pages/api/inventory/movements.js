@@ -44,98 +44,25 @@ export default async function handler(req, res) {
     const qty = Number(quantity)
     if (qty <= 0) return res.status(400).json({ error: 'Quantity must be greater than 0' })
 
-    // ── Validate stock availability ────────────────────────
-    if (movement_type === 'outward' || movement_type === 'transfer') {
-      const fromLoc = from_location || 'HO'
-      const { data: stock } = await supabaseAdmin
-        .from('inventory_stock')
-        .select('quantity')
-        .eq('item_id', item_id)
-        .eq('location', fromLoc)
-        .single()
+    // SECURE: Use RPC for atomic "check and update" (Critical #4)
+    const { data: rpcRes, error: rpcErr } = await supabaseAdmin.rpc('process_inventory_movement', {
+      p_item_id        : item_id,
+      p_movement_type  : movement_type,
+      p_qty            : qty,
+      p_from_location  : from_location || null,
+      p_to_location    : to_location   || null,
+      p_site_id        : site_id       || null,
+      p_reference      : reference     || null,
+      p_remarks        : remarks       || null,
+      p_moved_by       : moved_by      || null,
+      p_moved_by_name  : moved_by_name || null,
+      p_movement_date  : movement_date || new Date().toISOString().split('T')[0]
+    })
 
-      const available = Number(stock?.quantity || 0)
-      if (available < qty) {
-        return res.status(400).json({
-          error: `Insufficient stock at ${fromLoc}. Available: ${available}`
-        })
-      }
-    }
+    if (rpcErr) return res.status(500).json({ error: rpcErr.message })
+    if (!rpcRes.success) return res.status(400).json({ error: rpcRes.error })
 
-    // ── Record movement ────────────────────────────────────
-    const { data: movement, error: movErr } = await supabaseAdmin
-      .from('inventory_movements')
-      .insert([{
-        item_id,
-        movement_type,
-        quantity      : qty,
-        from_location : from_location || null,
-        to_location   : to_location   || null,
-        site_id       : site_id       || null,
-        reference     : reference     || null,
-        remarks       : remarks       || null,
-        moved_by      : moved_by      || null,
-        moved_by_name : moved_by_name || null,
-        movement_date : movement_date || new Date().toISOString().split('T')[0],
-      }])
-      .select()
-      .single()
-
-    if (movErr) return res.status(500).json({ error: movErr.message })
-
-    // ── Update stock levels ────────────────────────────────
-    const upsertStock = async (location, siteId, deltaQty) => {
-      const { data: existing } = await supabaseAdmin
-        .from('inventory_stock')
-        .select('id, quantity')
-        .eq('item_id', item_id)
-        .eq('location', location)
-        .maybeSingle()
-
-      if (existing) {
-        const newQty = Math.max(0, Number(existing.quantity) + deltaQty)
-        await supabaseAdmin
-          .from('inventory_stock')
-          .update({ quantity: newQty, updated_at: new Date().toISOString() })
-          .eq('id', existing.id)
-      } else {
-        await supabaseAdmin
-          .from('inventory_stock')
-          .insert([{
-            item_id,
-            location,
-            site_id : siteId || null,
-            quantity: Math.max(0, deltaQty),
-          }])
-      }
-    }
-
-    // Apply stock changes based on movement type
-    if (movement_type === 'inward') {
-      // Stock comes into HO (or specified location)
-      await upsertStock(to_location || 'HO', null, +qty)
-    }
-    else if (movement_type === 'outward') {
-      // Stock leaves HO to a site
-      await upsertStock(from_location || 'HO', null, -qty)
-      if (to_location && to_location !== 'HO') {
-        await upsertStock(to_location, site_id, +qty)
-      }
-    }
-    else if (movement_type === 'transfer') {
-      // Stock moves between locations
-      await upsertStock(from_location || 'HO', null, -qty)
-      await upsertStock(to_location,    site_id, +qty)
-    }
-    else if (movement_type === 'return') {
-      // Stock returns from site to HO
-      if (from_location && from_location !== 'HO') {
-        await upsertStock(from_location, site_id, -qty)
-      }
-      await upsertStock('HO', null, +qty)
-    }
-
-    return res.status(201).json(movement)
+    return res.status(201).json({ id: rpcRes.movement_id, ...req.body })
   }
 
   res.status(405).json({ error: 'Method not allowed' })

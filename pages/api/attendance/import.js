@@ -91,7 +91,7 @@ export default async function handler(req, res) {
       employee_id,
       date,
       status     : finalStatus,
-      salary_cut : finalStatus === 'P:P' ? slab : 0,
+      salary_cut : mapped === 'P:P' ? slab : 0,
       remark     : remark || null,
     })
 
