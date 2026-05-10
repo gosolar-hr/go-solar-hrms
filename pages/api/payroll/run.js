@@ -117,15 +117,15 @@ export default async function handler(req, res) {
     const { overtimeAmount, hourlyRate } = calculateOvertime({ ...emp, payrollMonth: month, payrollYear: year }, overtimeHours)
 
     // Gross Salary (Deduction based)
-    const { gross, lwpDeduction } = calculateGrossSalary(
+    const { gross, earnedCTC, lwpDeduction } = calculateGrossSalary(
       emp, attendance,
       lateDeduction,
       incentive, overtimeAmount,
       month, year
     )
 
-    const pf   = calculatePF(emp, gross)
-    const esic = calculateESIC(emp, gross, overtimeAmount)
+    const pf   = calculatePF(emp, earnedCTC)
+    const esic = calculateESIC(emp, gross, earnedCTC)
     const pt   = calculatePT(gross, month, emp.gender)
     
     // Display-only deductions

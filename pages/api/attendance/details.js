@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../../../lib/supabase'
 import { requireRole } from '../../../lib/requireAuth'
+import { applySandwichRule, refreshAttendanceSummary } from '../../../lib/attendanceUtils'
 
 export default async function handler(req, res) {
   const session = await requireRole(req, res, ['hr'])
@@ -8,171 +9,55 @@ export default async function handler(req, res) {
   // GET — fetch day-level details for one employee + month
   if (req.method === 'GET') {
     const { employee_id, month, year } = req.query
-
     if (!employee_id || !month || !year) {
       return res.status(400).json({ error: 'employee_id, month and year required' })
     }
-
-    // Build date range for the month
-    const from = `${year}-${String(month).padStart(2,'0')}-01`
-    const lastDay = new Date(year, month, 0).getDate()
-    const to   = `${year}-${String(month).padStart(2,'0')}-${lastDay}`
 
     const { data, error } = await supabaseAdmin
       .from('attendance_details')
       .select('*')
       .eq('employee_id', employee_id)
-      .gte('date', from)
-      .lte('date', to)
+      .gte('date', `${year}-${String(month).padStart(2,'0')}-01`)
+      .lte('date', `${year}-${String(month).padStart(2,'0')}-${new Date(year, month, 0).getDate()}`)
       .order('date')
 
     if (error) return res.status(500).json({ error: error.message })
     return res.status(200).json(data)
   }
 
-  // PUT — HR overrides a single day's salary_cut and remark
+  // PUT — HR overrides a single day
   if (req.method === 'PUT') {
     let { employee_id, date, status, salary_cut, remark } = req.body
-
     if (!employee_id || !date) {
       return res.status(400).json({ error: 'employee_id and date required' })
     }
 
-    // SECURE: Validate salary_cut bounds (High #11)
+    // SECURE: Validate salary_cut bounds
     salary_cut = Math.min(Math.max(Number(salary_cut || 0), 0), 1)
 
     // Update the day record
-    const { data, error } = await supabaseAdmin
+    const { error: upsertErr } = await supabaseAdmin
       .from('attendance_details')
-      .upsert([{ employee_id, date, status, salary_cut, remark }],
-              { onConflict: 'employee_id,date' })
-      .select()
-      .single()
+      .upsert([{ employee_id, date, status, salary_cut, remark }], { onConflict: 'employee_id,date' })
 
-    if (error) return res.status(500).json({ error: error.message })
+    if (upsertErr) return res.status(500).json({ error: upsertErr.message })
 
-    // Recalculate and update the attendance summary for that month
-    const month = parseInt(date.split('-')[1])
-    const year  = parseInt(date.split('-')[0])
-    const from  = `${year}-${String(month).padStart(2,'0')}-01`
-    const lastDayRec = new Date(year, month, 0).getDate()
-    const to    = `${year}-${String(month).padStart(2,'0')}-${lastDayRec}`
+    const m = parseInt(date.split('-')[1])
+    const y = parseInt(date.split('-')[0])
 
-    // ── Sandwich Rule Check ──────────────────────────────────
-    const sandwichDates = await checkSandwichRule(
-      employee_id,
-      date,
-      year,
-      month
-    )
-
-    // Re-fetch days because sandwich rule might have updated some W/O to A
-    const { data: finalDays } = await supabaseAdmin
-      .from('attendance_details')
-      .select('status, salary_cut')
-      .eq('employee_id', employee_id)
-      .gte('date', from)
-      .lte('date', to)
-
-    const SKIP = new Set(['W/O', 'WO', 'H'])
-    let present_days = 0, absent_days = 0, late_marks = 0
-
-    for (const d of finalDays || []) {
-      const s = (d.status || '').toUpperCase().trim()
-
-      if (s === 'P' || s === 'P:P') {
-        present_days++
-        if (d.salary_cut > 0) late_marks++
-      }
-      else if (s === 'PL') {
-        present_days++
-      }
-      else if (s === 'MO' || s === 'AO') {
-        present_days += 0.5
-        absent_days  += 0.5
-      }
-      else if (s === 'P:A' || s === 'A:P') {
-        present_days += 0.5
-        absent_days  += 0.5
-      }
-      else if (s === 'A' || s === 'A:A' || s === 'LWP' || s === 'LOP') {
-        absent_days++
-      }
-      // WO and H are NOT counted in either — they are implicitly paid
-    }
-
-    await supabaseAdmin
-      .from('attendance')
-      .upsert([{
-        employee_id,
-        month,
-        year,
-        present_days : present_days,
-        leaves       : absent_days,
-        late_marks,
-      }], { onConflict: 'employee_id,month,year' })
+    // HIGH #6: Trigger sandwich rule check (Shared)
+    const sandwichDates = await applySandwichRule(employee_id, m, y)
+    
+    // HIGH #14: Refresh summary (Shared)
+    const summary = await refreshAttendanceSummary(employee_id, m, y)
 
     return res.status(200).json({
-      message          : 'Day updated and attendance summary recalculated',
-      day              : data,
-      summary          : { present_days, absent_days, late_marks },
+      message          : 'Attendance saved',
       sandwich_applied : sandwichDates.length > 0,
       sandwich_dates   : sandwichDates,
+      summary
     })
   }
 
   res.status(405).json({ error: 'Method not allowed' })
-}
-
-async function checkSandwichRule(employee_id, date, year, month) {
-  const from = `${year}-${String(month).padStart(2,'0')}-01`
-  const lastDay = new Date(year, month, 0).getDate()
-  const to   = `${year}-${String(month).padStart(2,'0')}-${lastDay}`
-
-  const { data: allDays } = await supabaseAdmin
-    .from('attendance_details')
-    .select('date, status')
-    .eq('employee_id', employee_id)
-    .gte('date', from)
-    .lte('date', to)
-    .order('date')
-
-  if (!allDays?.length) return []
-
-  const ABSENT   = new Set(['A', 'A:A', 'LWP', 'LOP'])
-  const WEEKOFF  = new Set(['WO', 'W/O', 'H'])
-  const sandwich = []
-
-  // HIGH #6: Improved sandwich rule to handle consecutive weekoffs/holidays
-  for (let i = 0; i < allDays.length; i++) {
-    if (WEEKOFF.has(allDays[i].status)) {
-      let start = i
-      while (i < allDays.length && WEEKOFF.has(allDays[i].status)) {
-        i++
-      }
-      let end = i - 1
-
-      // Check day before sequence and day after
-      if (start > 0 && end < allDays.length - 1) {
-        const prevDayStatus = (allDays[start - 1].status || '').toUpperCase()
-        const nextDayStatus = (allDays[end + 1].status   || '').toUpperCase()
-
-        if (ABSENT.has(prevDayStatus) && ABSENT.has(nextDayStatus)) {
-          for (let k = start; k <= end; k++) {
-            sandwich.push(allDays[k].date)
-          }
-        }
-      }
-    }
-  }
-
-  for (const sandwichDate of sandwich) {
-    await supabaseAdmin
-      .from('attendance_details')
-      .update({ status: 'A', salary_cut: 0 })
-      .eq('employee_id', employee_id)
-      .eq('date', sandwichDate)
-  }
-
-  return sandwich
 }
