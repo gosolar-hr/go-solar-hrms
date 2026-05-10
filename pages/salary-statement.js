@@ -23,29 +23,36 @@ export default function SalaryStatement() {
 
   const fmt = n => Number(n || 0).toLocaleString('en-IN')
 
-  // Column totals
-  const totals = records.reduce((acc, r) => ({
-    basic      : acc.basic       + Number(r.employees?.basic_salary || 0),
-    hra        : acc.hra         + Number(r.employees?.hra          || 0),
-    cca        : acc.cca         + Number(r.employees?.cca          || 0),
-    conv       : acc.conv        + Number(r.employees?.conveyance   || 0),
-    allowances : acc.allowances  + Number(r.employees?.allowances   || 0),
-    gross      : acc.gross       + Number(r.gross_salary            || 0),
-    incentive  : acc.incentive   + Number(r.incentive               || 0),
-    ot         : acc.ot          + Number(r.overtime_amount         || 0),
-    pf         : acc.pf          + Number(r.pf_deduction            || 0),
-    esic       : acc.esic        + Number(r.esic_deduction          || 0),
-    pt         : acc.pt          + Number(r.pt_deduction            || 0),
-    tds        : acc.tds         + Number(r.tds_deduction           || 0),
-    loan       : acc.loan        + Number(r.loan                    || 0),
-    advance    : acc.advance     + Number(r.advance                 || 0),
-    otherDed   : acc.otherDed    + Number(r.other_deductions        || 0),
-    totalDed   : acc.totalDed    + Number(r.pf_deduction||0) + Number(r.esic_deduction||0)
-                                 + Number(r.pt_deduction||0) + Number(r.tds_deduction||0)
-                                 + Number(r.loan||0) + Number(r.advance||0)
-                                 + Number(r.other_deductions||0),
-    net        : acc.net         + Number(r.net_salary              || 0),
-  }), {
+  // FIX: Column totals sum earned (prorated) components, not raw CTC fields
+  const totals = records.reduce((acc, r) => {
+    const e         = r.employees || {}
+    const fullGross = Number(e.basic_salary||0) + Number(e.hra||0) + Number(e.cca||0) +
+                      Number(e.conveyance||0) + Number(e.allowances||0)
+    const earnedCTC = Number(r.gross_salary||0) - Number(r.overtime_amount||0) - Number(r.incentive||0)
+    const ratio     = fullGross > 0 ? earnedCTC / fullGross : 0
+    return {
+      basic      : acc.basic       + Math.round(Number(e.basic_salary||0) * ratio),
+      hra        : acc.hra         + Math.round(Number(e.hra||0)           * ratio),
+      cca        : acc.cca         + Math.round(Number(e.cca||0)           * ratio),
+      conv       : acc.conv        + Math.round(Number(e.conveyance||0)    * ratio),
+      allowances : acc.allowances  + Math.round(Number(e.allowances||0)    * ratio),
+      gross      : acc.gross       + Number(r.gross_salary            || 0),
+      incentive  : acc.incentive   + Number(r.incentive               || 0),
+      ot         : acc.ot          + Number(r.overtime_amount         || 0),
+      pf         : acc.pf          + Number(r.pf_deduction            || 0),
+      esic       : acc.esic        + Number(r.esic_deduction          || 0),
+      pt         : acc.pt          + Number(r.pt_deduction            || 0),
+      tds        : acc.tds         + Number(r.tds_deduction           || 0),
+      loan       : acc.loan        + Number(r.loan                    || 0),
+      advance    : acc.advance     + Number(r.advance                 || 0),
+      otherDed   : acc.otherDed    + Number(r.other_deductions        || 0),
+      totalDed   : acc.totalDed    + Number(r.pf_deduction||0) + Number(r.esic_deduction||0)
+                                   + Number(r.pt_deduction||0) + Number(r.tds_deduction||0)
+                                   + Number(r.loan||0) + Number(r.advance||0)
+                                   + Number(r.other_deductions||0),
+      net        : acc.net         + Number(r.net_salary              || 0),
+    }
+  }, {
     basic:0, hra:0, cca:0, conv:0, allowances:0, gross:0,
     incentive:0, ot:0, pf:0, esic:0, pt:0, tds:0,
     loan:0, advance:0, otherDed:0, totalDed:0, net:0,
@@ -165,16 +172,13 @@ export default function SalaryStatement() {
                 </tr>
                 {/* Column header row */}
                 <tr>
-                  {/* Employee Details */}
                   <th className="left" style={{ minWidth:36 }}>Sr. No.</th>
                   <th className="left" style={{ minWidth:70 }}>Emp Code</th>
                   <th className="left" style={{ minWidth:160 }}>Employee Name</th>
                   <th className="left" style={{ minWidth:100 }}>Designation</th>
                   <th className="left" style={{ minWidth:80 }}>Join Date</th>
-                  {/* Attendance */}
                   <th style={{ minWidth:60 }}>Work Days</th>
                   <th style={{ minWidth:50 }}>LOP</th>
-                  {/* Earnings */}
                   <th className="th-group-earn" style={{ minWidth:70 }}>Basic</th>
                   <th className="th-group-earn" style={{ minWidth:60 }}>HRA</th>
                   <th className="th-group-earn" style={{ minWidth:50 }}>CCA</th>
@@ -183,7 +187,6 @@ export default function SalaryStatement() {
                   <th className="th-group-earn" style={{ minWidth:60 }}>OT Amt</th>
                   <th className="th-group-earn" style={{ minWidth:70 }}>Incentive</th>
                   <th className="th-group-earn" style={{ minWidth:80 }}>Gross Earned</th>
-                  {/* Deductions */}
                   <th className="th-group-deduct" style={{ minWidth:60 }}>PF</th>
                   <th className="th-group-deduct" style={{ minWidth:60 }}>ESIC</th>
                   <th className="th-group-deduct" style={{ minWidth:50 }}>PT</th>
@@ -191,19 +194,20 @@ export default function SalaryStatement() {
                   <th className="th-group-deduct" style={{ minWidth:60 }}>Loan</th>
                   <th className="th-group-deduct" style={{ minWidth:70 }}>Advance</th>
                   <th className="th-group-deduct" style={{ minWidth:80 }}>Other Ded.</th>
-                  {/* Net */}
                   <th className="th-group-net" style={{ minWidth:90 }}>Net Pay</th>
                 </tr>
               </thead>
               <tbody>
                 {records.map((r, idx) => {
                   const e = r.employees
-                  const lop = Math.max(0, 30 - (r.present_days || 30))
+                  // FIX: use actual days in month, not hardcoded 30
+                  const daysInMonth = new Date(year, month, 0).getDate()
+                  const lop = Math.max(0, daysInMonth - (r.present_days || daysInMonth))
                   const totalDed = Number(r.pf_deduction||0) + Number(r.esic_deduction||0)
                                  + Number(r.pt_deduction||0) + Number(r.tds_deduction||0)
                                  + Number(r.loan||0) + Number(r.advance||0)
                                  + Number(r.other_deductions||0)
-                  const fullGross = Number(e?.basic_salary||0) + Number(e?.hra||0) + Number(e?.cca||0) + 
+                  const fullGross = Number(e?.basic_salary||0) + Number(e?.hra||0) + Number(e?.cca||0) +
                                    Number(e?.conveyance||0) + Number(e?.allowances||0)
                   const earnedCTC = Number(r.gross_salary) - Number(r.overtime_amount||0) - Number(r.incentive||0)
                   const ratio = fullGross > 0 ? earnedCTC / fullGross : 0
@@ -216,7 +220,6 @@ export default function SalaryStatement() {
 
                   return (
                     <tr key={r.id}>
-                      {/* Employee Details */}
                       <td className="left" style={{ textAlign:'center' }}>{idx + 1}</td>
                       <td className="left">{e?.emp_code || '—'}</td>
                       <td className="left" style={{ fontWeight:500, fontFamily:'Arial, sans-serif' }}>
@@ -233,10 +236,8 @@ export default function SalaryStatement() {
                               { day:'2-digit', month:'short', year:'numeric' })
                           : '—'}
                       </td>
-                      {/* Attendance */}
-                      <td>{r.present_days || 30}</td>
+                      <td>{r.present_days || daysInMonth}</td>
                       <td style={{ color: lop > 0 ? '#c00' : '#999' }}>{lop}</td>
-                      {/* Earnings — HIGH #8: Show Earned (Prorated) components */}
                       <td className="td-earn">{fmt(earnedBasic)}</td>
                       <td className="td-earn">{fmt(earnedHRA)}</td>
                       <td className="td-earn">{fmt(earnedCCA)}</td>
@@ -245,7 +246,6 @@ export default function SalaryStatement() {
                       <td className="td-earn">{fmt(r.overtime_amount || 0)}</td>
                       <td className="td-earn">{fmt(r.incentive      || 0)}</td>
                       <td className="td-earn td-gross">{fmt(r.gross_salary)}</td>
-                      {/* Deductions */}
                       <td className="td-deduct">{fmt(r.pf_deduction)}</td>
                       <td className="td-deduct">{fmt(r.esic_deduction)}</td>
                       <td className="td-deduct">{fmt(r.pt_deduction)}</td>
@@ -253,7 +253,6 @@ export default function SalaryStatement() {
                       <td className="td-deduct">{fmt(r.loan     || 0)}</td>
                       <td className="td-deduct">{fmt(r.advance  || 0)}</td>
                       <td className="td-deduct">{fmt(r.other_deductions || 0)}</td>
-                      {/* Net */}
                       <td className="td-net">{fmt(r.net_salary)}</td>
                     </tr>
                   )

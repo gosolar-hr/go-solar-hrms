@@ -83,30 +83,6 @@ export default async function handler(req, res) {
   ws.addRow([]) // blank row
 
   // ── Row 4: Headers ────────────────────────────────────
-  // Columns:
-  // A  EMP NO
-  // B  NAME
-  // C  DESIGNATION
-  // D  JOIN DATE
-  // E  DAYS (paid days)
-  // F  LWP
-  // G  BASIC
-  // H  HRA
-  // I  CCA
-  // J  CONV
-  // K  OTHER ALLOW
-  // L  INCENTIVE
-  // M  OT PAY
-  // N  GROSS
-  // O  PF
-  // P  ESIC
-  // Q  PT
-  // R  LOAN          ← NEW
-  // S  ADVANCE       ← NEW
-  // T  OTHER DED     ← NEW (late mark deduction)
-  // U  TOTAL DED
-  // V  NET PAY
-
   const headers = [
     { label:'EMP NO',      fill: S.darkFill  },
     { label:'NAME',        fill: S.darkFill  },
@@ -144,11 +120,15 @@ export default async function handler(req, res) {
   // ── Data rows ─────────────────────────────────────────
   const dataStartRow = 5
 
+  // FIX: actual days in the payroll month (handles 28/29/31-day months)
+  const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate()
+
   records.forEach((r, idx) => {
     const e        = r.employees || {}
     const att      = attendanceMap[r.employee_id] || {}
     const lwpDays  = Number(att.leaves || 0)
-    const paidDays = Math.max(0, 30 - lwpDays)
+    // FIX: use actual days in month, not hardcoded 30
+    const paidDays = Math.max(0, daysInMonth - lwpDays)
 
     const loan      = Number(r.loan              || 0)
     const advance   = Number(r.advance           || 0)
@@ -158,6 +138,19 @@ export default async function handler(req, res) {
                       Number(r.pt_deduction      || 0) +
                       loan + advance + otherDed
 
+    // FIX: derive prorated (earned) salary components — avoids showing full
+    // CTC when employee had LWP days. Same ratio logic as salary-statement.js.
+    const fullGross   = Number(e.basic_salary||0) + Number(e.hra||0) +
+                        Number(e.cca||0) + Number(e.conveyance||0) + Number(e.allowances||0)
+    const earnedCTC   = Number(r.gross_salary||0) - Number(r.overtime_amount||0) - Number(r.incentive||0)
+    const ratio       = fullGross > 0 ? earnedCTC / fullGross : 0
+
+    const earnedBasic = Math.round(Number(e.basic_salary||0) * ratio)
+    const earnedHRA   = Math.round(Number(e.hra||0)          * ratio)
+    const earnedCCA   = Math.round(Number(e.cca||0)          * ratio)
+    const earnedConv  = Math.round(Number(e.conveyance||0)   * ratio)
+    const earnedAllow = Math.round(Number(e.allowances||0)   * ratio)
+
     const row = ws.addRow([
       e.emp_code       || '—',
       e.name           || '—',
@@ -166,13 +159,13 @@ export default async function handler(req, res) {
         ? new Date(e.date_of_joining).toLocaleDateString('en-IN',
             { day:'2-digit', month:'short', year:'numeric' })
         : '—',
-      paidDays,                           // E — DAYS
-      lwpDays,                            // F — LWP
-      Number(e.basic_salary   || 0),      // G
-      Number(e.hra            || 0),      // H
-      Number(e.cca            || 0),      // I
-      Number(e.conveyance     || 0),      // J
-      Number(e.allowances     || 0),      // K
+      paidDays,        // E — DAYS  (actual days minus LWP)
+      lwpDays,         // F — LWP
+      earnedBasic,     // G — BASIC (prorated)
+      earnedHRA,       // H — HRA   (prorated)
+      earnedCCA,       // I — CCA   (prorated)
+      earnedConv,      // J — CONV  (prorated)
+      earnedAllow,     // K — OTHER ALLOW (prorated)
       Number(r.incentive      || 0),      // L
       Number(r.overtime_amount|| 0),      // M
       Number(r.gross_salary   || 0),      // N
