@@ -1,6 +1,9 @@
 import { supabaseAdmin } from '../../../lib/supabase'
+import { requireRole } from '../../../lib/requireAuth'
 
 export default async function handler(req, res) {
+  const session = await requireRole(req, res, ['hr'])
+  if (!session) return
 
   // GET — fetch day-level details for one employee + month
   if (req.method === 'GET') {
@@ -28,11 +31,14 @@ export default async function handler(req, res) {
 
   // PUT — HR overrides a single day's salary_cut and remark
   if (req.method === 'PUT') {
-    const { employee_id, date, status, salary_cut, remark } = req.body
+    let { employee_id, date, status, salary_cut, remark } = req.body
 
     if (!employee_id || !date) {
       return res.status(400).json({ error: 'employee_id and date required' })
     }
+
+    // SECURE: Validate salary_cut bounds (High #11)
+    salary_cut = Math.min(Math.max(Number(salary_cut || 0), 0), 1)
 
     // Update the day record
     const { data, error } = await supabaseAdmin
@@ -50,16 +56,6 @@ export default async function handler(req, res) {
     const from  = `${year}-${String(month).padStart(2,'0')}-01`
     const to    = new Date(year, month, 0).toISOString().split('T')[0]
 
-    const { data: allDays } = await supabaseAdmin
-      .from('attendance_details')
-      .select('status, salary_cut')
-      .eq('employee_id', employee_id)
-      .gte('date', from)
-      .lte('date', to)
-
-    const SKIP = new Set(['W/O', 'WO', 'H'])
-    let present_days = 0, absent_days = 0, late_marks = 0
-
     // ── Sandwich Rule Check ──────────────────────────────────
     const sandwichDates = await checkSandwichRule(
       employee_id,
@@ -75,6 +71,9 @@ export default async function handler(req, res) {
       .eq('employee_id', employee_id)
       .gte('date', from)
       .lte('date', to)
+
+    const SKIP = new Set(['W/O', 'WO', 'H'])
+    let present_days = 0, absent_days = 0, late_marks = 0
 
     for (const d of finalDays || []) {
       const s = (d.status || '').toUpperCase().trim()

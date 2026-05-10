@@ -1,3 +1,5 @@
+import { signJWT } from '../../../lib/auth'
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
@@ -5,41 +7,44 @@ export default async function handler(req, res) {
   const password = (req.body.password || '').trim()
   const role     = (req.body.role     || 'hr')
 
-  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'LiveLife@77'
-  const TECH_PASSWORD  = process.env.TECH_PASSWORD  || 'Tech@321'
-  const HR_EMAIL       = process.env.HR_EMAIL        || 'hr@gosolar.co.in'
-  const TECH_EMAIL     = process.env.TECH_EMAIL      || 'tech@go-solar.co'
+  // SECURE: No hardcoded fallbacks
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD
+  const TECH_PASSWORD  = process.env.TECH_PASSWORD
+  const HR_EMAIL       = process.env.HR_EMAIL   || 'hr@gosolar.co.in'
+  const TECH_EMAIL     = process.env.TECH_EMAIL || 'tech@go-solar.co'
+
+  let authenticated = false
+  let userRole      = ''
+  let redirect      = '/'
 
   if (role === 'hr') {
-    if (email !== HR_EMAIL) {
-      return res.status(401).json({ error: 'Invalid email address' })
+    if (email === HR_EMAIL && password === ADMIN_PASSWORD) {
+      authenticated = true
+      userRole      = 'hr'
+      redirect      = '/'
     }
-    if (password !== ADMIN_PASSWORD) {
-      return res.status(401).json({ error: 'Incorrect password' })
+  } else if (role === 'technician') {
+    if (email === TECH_EMAIL && password === TECH_PASSWORD) {
+      authenticated = true
+      userRole      = 'tech'
+      redirect      = '/amc'
     }
-    res.setHeader('Set-Cookie', [
-      `hrms_auth=hr; HttpOnly; Path=/; SameSite=Strict`,
-      `hrms_role=hr; Path=/; SameSite=Strict`,
-    ])
-    return res.status(200).json({ success: true, role: 'hr', redirect: '/' })
   }
 
-  if (role === 'technician') {
-    if (!email) {
-      return res.status(401).json({ error: 'Email address is required' })
-    }
-    if (email !== TECH_EMAIL) {
-      return res.status(401).json({ error: 'Invalid email address' })
-    }
-    if (password !== TECH_PASSWORD) {
-      return res.status(401).json({ error: 'Incorrect password' })
-    }
-    res.setHeader('Set-Cookie', [
-      `hrms_auth=tech; HttpOnly; Path=/; SameSite=Strict`,
-      `hrms_role=tech; Path=/; SameSite=Strict`,
-    ])
-    return res.status(200).json({ success: true, role: 'technician', redirect: '/amc' })
+  if (!authenticated) {
+    // SECURE: Generic error message (High #13)
+    return res.status(401).json({ error: 'Invalid email or password' })
   }
 
-  return res.status(401).json({ error: 'Invalid credentials' })
+  // Issue Signed JWT (Critical #1)
+  const token = await signJWT({ email, role: userRole })
+
+  // SECURE: HttpOnly, Secure, SameSite=Strict cookies (High #7)
+  const isProd = process.env.NODE_ENV === 'production'
+  res.setHeader('Set-Cookie', [
+    `hrms_session=${token}; HttpOnly; Path=/; SameSite=Strict; ${isProd ? 'Secure;' : ''} Max-Age=86400`,
+    `hrms_role=${userRole}; Path=/; SameSite=Strict; ${isProd ? 'Secure;' : ''} Max-Age=86400`,
+  ])
+
+  return res.status(200).json({ success: true, role: userRole, redirect })
 }

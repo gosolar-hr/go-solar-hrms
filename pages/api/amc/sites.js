@@ -1,6 +1,9 @@
 import { supabaseAdmin } from '../../../lib/supabase'
+import { requireRole } from '../../../lib/requireAuth'
 
 export default async function handler(req, res) {
+  const session = await requireRole(req, res, ['hr', 'tech'])
+  if (!session) return
 
   // ── GET — list all sites with alert flags ──────────────
   if (req.method === 'GET') {
@@ -88,8 +91,11 @@ export default async function handler(req, res) {
 
   // ── PUT — update site ──────────────────────────────────
   if (req.method === 'PUT') {
-    const { id, ...updates } = req.body
+    const { id, client_name, address, city, site_type, system_size_kw, amc_valid_upto, contact_name, contact_phone, assigned_to_emp_code, assigned_to_name, service_day_1, service_day_2, notes, is_active } = req.body
     if (!id) return res.status(400).json({ error: 'id required' })
+
+    // SECURE: Whitelist fields to prevent mass-assignment (Critical #5)
+    const updates = { client_name, address, city, site_type, system_size_kw, amc_valid_upto, contact_name, contact_phone, assigned_to_emp_code, assigned_to_name, service_day_1, service_day_2, notes, is_active }
 
     const { data, error } = await supabaseAdmin
       .from('amc_sites')
