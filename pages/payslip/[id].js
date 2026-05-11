@@ -42,15 +42,15 @@ export default function Payslip() {
 
   const emp        = data.employees
   const monthLabel = MONTHS[Number(month) - 1]
-  let WORKING_DAYS = 30
+  const daysInMonth  = new Date(Number(year), Number(month), 0).getDate()
+  let WORKING_DAYS   = daysInMonth
 
   // Pro-rata for new joiners
   const joining      = new Date(emp.date_of_joining)
   const joiningMonth = joining.getMonth() + 1
   const joiningYear  = joining.getFullYear()
   if (joiningYear === Number(year) && joiningMonth === Number(month)) {
-    const daysInMonth = new Date(Number(year), Number(month), 0).getDate()
-    WORKING_DAYS      = daysInMonth - joining.getDate() + 1
+    WORKING_DAYS = daysInMonth - joining.getDate() + 1
   }
 
   // Full (CTC) salary components
@@ -77,10 +77,14 @@ export default function Payslip() {
   const overtimeHours   = Number(data.overtime_hours    || 0)
 
   // Attendance
-  const rawPresentDays = data.present_days || 0
-  const presentDays = rawPresentDays > 0
+  const rawPresentDays  = data.present_days || 0
+  const earnedBase      = actualGross - overtimeAmount - incentive
+  const presentDays     = rawPresentDays > 0
     ? rawPresentDays
-    : Math.round((actualGross / fullGross) * WORKING_DAYS)
+    : Math.min(
+        WORKING_DAYS,
+        Math.round((earnedBase / fullGross) * WORKING_DAYS)
+      )
 
   const lop = Math.max(0, WORKING_DAYS - presentDays)
 

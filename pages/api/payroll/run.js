@@ -144,6 +144,7 @@ export default async function handler(req, res) {
       employee_id    : emp.id,
       month,
       year,
+      present_days   : attendance.present_days,
       gross_salary   : gross,
       pf_deduction   : pf,
       esic_deduction : esic.employee,
