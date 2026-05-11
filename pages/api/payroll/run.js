@@ -144,7 +144,7 @@ export default async function handler(req, res) {
       employee_id    : emp.id,
       month,
       year,
-      present_days   : attendance.present_days,
+      present_days   : Math.round(attendance.present_days * 2) / 2,
       gross_salary   : gross,
       pf_deduction   : pf,
       esic_deduction : esic.employee,
