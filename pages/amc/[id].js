@@ -36,6 +36,7 @@ export default function SiteDetail() {
   const [editVisit,  setEditVisit]  = useState(null)
   const [showAddVisit, setShowAddVisit] = useState(false)
   const [editDetails,  setEditDetails] = useState(false)
+  const [isHR,       setIsHR]       = useState(false)
 
   // Visit form
   const [visitForm, setVisitForm] = useState({
@@ -47,6 +48,9 @@ export default function SiteDetail() {
 
   const load = () => {
     if (!id) return
+    // Read role from cookie — HR can delete visits, tech cannot
+    const role = document.cookie.split(';').find(c => c.trim().startsWith('hrms_role='))
+    setIsHR((role || '').includes('hr'))
     Promise.all([
       fetch(`/api/amc/${id}`).then(r => r.json()),
       fetch('/api/employees').then(r => r.json()),
@@ -132,6 +136,20 @@ export default function SiteDetail() {
       remarks       : visit.remarks,
     })
     setAlert({ type:'success', msg:'Visit marked as completed ✓' })
+  }
+
+  const deleteVisit = async (visitId) => {
+    if (!confirm('Delete this scheduled visit? This cannot be undone.')) return
+    const res = await fetch(`/api/amc/visits?id=${visitId}`, { method:'DELETE' })
+    if (res.ok) {
+      setSite(prev => ({
+        ...prev,
+        amc_visits: prev.amc_visits.filter(v => v.id !== visitId)
+      }))
+      setAlert({ type:'success', msg:'Visit deleted.' })
+    } else {
+      setAlert({ type:'error', msg:'Failed to delete visit.' })
+    }
   }
 
   const toggleChecklist = (visitId, key) => {
@@ -429,6 +447,14 @@ export default function SiteDetail() {
                                   style={{ fontSize:11 }}>
                                   ✓ Done
                                 </button>
+                                {isHR && (
+                                  <button className="btn btn-outline btn-sm"
+                                    onClick={() => deleteVisit(visit.id)}
+                                    style={{ fontSize:11, color:'#F04438',
+                                      borderColor:'#F04438' }}>
+                                    🗑 Delete
+                                  </button>
+                                )}
                               </>
                             )}
                             {isEditing && (
