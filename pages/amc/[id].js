@@ -437,16 +437,23 @@ export default function SiteDetail() {
                           <div className="flex gap-8">
                             {visit.status === 'scheduled' && !isEditing && (
                               <>
-                                <button className="btn btn-outline btn-sm"
-                                  onClick={() => setEditVisit(visit.id)}
-                                  style={{ fontSize:11 }}>
-                                  ✏ Edit
-                                </button>
-                                <button className="btn btn-primary btn-sm"
-                                  onClick={() => markComplete(visit)}
-                                  style={{ fontSize:11 }}>
-                                  ✓ Done
-                                </button>
+                                {/* Technicians see Edit and Done */}
+                                {!isHR && (
+                                  <>
+                                    <button className="btn btn-outline btn-sm"
+                                      onClick={() => setEditVisit(visit.id)}
+                                      style={{ fontSize:11 }}>
+                                      ✏ Edit
+                                    </button>
+                                    <button className="btn btn-primary btn-sm"
+                                      onClick={() => markComplete(visit)}
+                                      style={{ fontSize:11 }}>
+                                      ✓ Done
+                                    </button>
+                                  </>
+                                )}
+
+                                {/* HR sees only Delete for managing schedule/mistakes */}
                                 {isHR && (
                                   <button className="btn btn-outline btn-sm"
                                     onClick={() => deleteVisit(visit.id)}
@@ -457,6 +464,7 @@ export default function SiteDetail() {
                                 )}
                               </>
                             )}
+
                             {isEditing && (
                               <>
                                 <button className="btn btn-primary btn-sm"
