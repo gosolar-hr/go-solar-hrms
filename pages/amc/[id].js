@@ -27,28 +27,24 @@ export default function SiteDetail() {
   const router = useRouter()
   const { id } = router.query
 
-  const [site,       setSite]       = useState(null)
-  const [employees,  setEmployees]  = useState([])
-  const [loading,    setLoading]    = useState(true)
-  const [saving,     setSaving]     = useState(false)
-  const [alert,      setAlert]      = useState(null)
-  const [activeTab,  setActiveTab]  = useState('visits')
-  const [editVisit,  setEditVisit]  = useState(null)
-  const [showAddVisit, setShowAddVisit] = useState(false)
-  const [editDetails,  setEditDetails] = useState(false)
-  const [isHR,       setIsHR]       = useState(false)
+  const [site,           setSite]          = useState(null)
+  const [employees,      setEmployees]     = useState([])
+  const [loading,        setLoading]       = useState(true)
+  const [saving,         setSaving]        = useState(false)
+  const [alert,          setAlert]         = useState(null)
+  const [activeTab,      setActiveTab]     = useState('visits')
+  const [editVisit,      setEditVisit]     = useState(null)
+  const [showAddVisit,   setShowAddVisit]  = useState(false)
+  const [editDetails,    setEditDetails]   = useState(false)
+  const [isHR,           setIsHR]          = useState(false)
+  const [rescheduleId,   setRescheduleId]  = useState(null)
+  const [rescheduleForm, setRescheduleForm]= useState({ scheduled_date:'', technician_id:'', remarks:'' })
 
-  // Visit form
-  const [visitForm, setVisitForm] = useState({
-    scheduled_date:'', technician_id:'', remarks:''
-  })
-
-  // Site edit form
-  const [editForm, setEditForm] = useState({})
+  const [visitForm, setVisitForm] = useState({ scheduled_date:'', technician_id:'', remarks:'' })
+  const [editForm,  setEditForm]  = useState({})
 
   const load = () => {
     if (!id) return
-    // Read role from cookie — HR can delete visits, tech cannot
     const role = document.cookie.split(';').find(c => c.trim().startsWith('hrms_role='))
     setIsHR((role || '').includes('hr'))
     Promise.all([
@@ -81,8 +77,7 @@ export default function SiteDetail() {
     const res = await fetch('/api/amc/sites', {
       method:'PUT', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
-        id,
-        ...editForm,
+        id, ...editForm,
         system_size_kw: editForm.system_size_kw ? Number(editForm.system_size_kw) : null,
         service_day_1 : editForm.service_day_1  ? Number(editForm.service_day_1)  : null,
         service_day_2 : editForm.service_day_2  ? Number(editForm.service_day_2)  : null,
@@ -142,14 +137,46 @@ export default function SiteDetail() {
     if (!confirm('Delete this scheduled visit? This cannot be undone.')) return
     const res = await fetch(`/api/amc/visits?id=${visitId}`, { method:'DELETE' })
     if (res.ok) {
-      setSite(prev => ({
-        ...prev,
-        amc_visits: prev.amc_visits.filter(v => v.id !== visitId)
-      }))
+      setSite(prev => ({ ...prev, amc_visits: prev.amc_visits.filter(v => v.id !== visitId) }))
       setAlert({ type:'success', msg:'Visit deleted.' })
     } else {
       setAlert({ type:'error', msg:'Failed to delete visit.' })
     }
+  }
+
+  // Open reschedule panel for a visit — pre-fill current technician
+  const openReschedule = (visit) => {
+    setRescheduleId(visit.id)
+    setRescheduleForm({
+      scheduled_date : '',
+      technician_id  : visit.technician_id   || '',
+      remarks        : '',
+    })
+    setEditVisit(null)
+  }
+
+  const saveReschedule = async () => {
+    if (!rescheduleForm.scheduled_date) {
+      return setAlert({ type:'error', msg:'Please select a new date.' })
+    }
+    setSaving(true)
+    const emp = employees.find(e => e.id === rescheduleForm.technician_id)
+    const res = await fetch('/api/amc/visits', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        id             : rescheduleId,
+        status         : 'rescheduled',
+        scheduled_date : rescheduleForm.scheduled_date,
+        technician_id  : rescheduleForm.technician_id  || null,
+        technician_name: emp?.name                      || null,
+        remarks        : rescheduleForm.remarks         || null,
+      })
+    })
+    setSaving(false)
+    if (!res.ok) return setAlert({ type:'error', msg:'Failed to reschedule.' })
+    setAlert({ type:'success', msg:'Visit rescheduled ✓' })
+    setRescheduleId(null)
+    load()
   }
 
   const toggleChecklist = (visitId, key) => {
@@ -163,27 +190,53 @@ export default function SiteDetail() {
     }))
   }
 
+  const openWhatsApp = (visit) => {
+    const phone = (site.contact_phone || '').replace(/\D/g, '')
+    if (!phone) {
+      alert('No contact phone number saved for this site.\nPlease add it under the Site Details tab.')
+      return
+    }
+    const waPhone    = phone.startsWith('91') ? phone : `91${phone}`
+    const techName   = visit.employees?.name || visit.technician_name || 'our technician'
+    const date       = new Date(visit.scheduled_date).toLocaleDateString('en-IN',
+                         { weekday:'long', day:'numeric', month:'long', year:'numeric' })
+    const clientName = site.contact_name || site.client_name || 'Sir/Madam'
+    const address    = [site.address, site.city].filter(Boolean).join(', ')
+    const message =
+`Dear ${clientName},
+
+This is a reminder that your AMC service visit is scheduled on *${date}*.
+
+📍 Site: ${site.client_name}${address ? `\n📌 Address: ${address}` : ''}
+👷 Technician: ${techName}
+
+Please ensure site access is available at the time of visit.
+
+For any queries, feel free to contact us.
+
+Thank you,
+*Go Solar Solutions*`
+    window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(message)}`, '_blank')
+  }
+
   const fmt = (d) => d
-    ? new Date(d).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'})
+    ? new Date(d).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })
     : '—'
 
   if (loading) return <Layout><div className="empty-state"><p>Loading...</p></div></Layout>
   if (!site || site.error) return <Layout><div className="empty-state"><strong>Site not found</strong></div></Layout>
 
-  const visits     = (site.amc_visits || []).sort((a,b) => new Date(a.scheduled_date) - new Date(b.scheduled_date))
-  const today      = new Date().toISOString().split('T')[0]
-  const validUpto  = site.amc_valid_upto ? new Date(site.amc_valid_upto) : null
-  const daysLeft   = validUpto ? Math.ceil((validUpto - new Date()) / (1000*60*60*24)) : null
-  const isExpired  = daysLeft !== null && daysLeft < 0
-  const isSoon     = daysLeft !== null && daysLeft >= 0 && daysLeft <= 30
-  const tc         = { residential:{c:'#2E90FA',bg:'#EFF8FF'}, commercial:{c:'#F79009',bg:'#FFFAEB'}, industrial:{c:'#7F56D9',bg:'#F4F3FF'} }[site.site_type] || {}
-
-  const serviceInfo = [site.service_day_1, site.service_day_2]
-    .filter(Boolean).map(d => `${d}th`).join(' & ')
+  const visits    = (site.amc_visits || []).sort((a,b) => new Date(a.scheduled_date) - new Date(b.scheduled_date))
+  const today     = new Date().toISOString().split('T')[0]
+  const validUpto = site.amc_valid_upto ? new Date(site.amc_valid_upto) : null
+  const daysLeft  = validUpto ? Math.ceil((validUpto - new Date()) / (1000*60*60*24)) : null
+  const isExpired = daysLeft !== null && daysLeft < 0
+  const isSoon    = daysLeft !== null && daysLeft >= 0 && daysLeft <= 30
+  const tc        = { residential:{c:'#2E90FA',bg:'#EFF8FF'}, commercial:{c:'#F79009',bg:'#FFFAEB'}, industrial:{c:'#7F56D9',bg:'#F4F3FF'} }[site.site_type] || {}
+  const serviceInfo = [site.service_day_1, site.service_day_2].filter(Boolean).map(d => `${d}th`).join(' & ')
 
   return (
     <Layout>
-      {/* Breadcrumb */}
       <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:13,
         color:'var(--text-muted)', marginBottom:20 }}>
         <Link href="/amc" style={{ color:'var(--text-muted)', textDecoration:'none' }}>O&M / AMC</Link>
@@ -235,45 +288,31 @@ export default function SiteDetail() {
           </div>
         </div>
 
-        {/* Info strip */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)',
           gap:12, marginTop:16, paddingTop:16,
           borderTop:'1px solid var(--border-light)' }}>
-          <div>
-            <div style={{ fontSize:10, color:'var(--text-muted)', fontWeight:600,
-              textTransform:'uppercase', letterSpacing:'0.06em' }}>AMC Valid Upto</div>
-            <div style={{ fontSize:14, fontWeight:600, marginTop:3,
-              color: isExpired ? '#F04438' : isSoon ? '#F79009' : 'var(--text-primary)' }}>
-              {fmt(site.amc_valid_upto)}
-              {daysLeft !== null && (
-                <span style={{ fontSize:11, marginLeft:6,
-                  color: isExpired ? '#F04438' : isSoon ? '#F79009' : '#12B76A' }}>
-                  ({isExpired ? `${Math.abs(daysLeft)} days ago` : `${daysLeft} days left`})
-                </span>
-              )}
+          {[
+            ['AMC Valid Upto', (() => (
+              <span style={{ color: isExpired ? '#F04438' : isSoon ? '#F79009' : 'var(--text-primary)' }}>
+                {fmt(site.amc_valid_upto)}
+                {daysLeft !== null && (
+                  <span style={{ fontSize:11, marginLeft:6,
+                    color: isExpired ? '#F04438' : isSoon ? '#F79009' : '#12B76A' }}>
+                    ({isExpired ? `${Math.abs(daysLeft)} days ago` : `${daysLeft} days left`})
+                  </span>
+                )}
+              </span>
+            ))()],
+            ['Assigned To',  site.assigned_to_name || '—'],
+            ['Service Days', serviceInfo || 'Not set'],
+            ['Visits',       `${visits.filter(v=>v.status==='completed').length} / ${visits.length} done`],
+          ].map(([label, value]) => (
+            <div key={label}>
+              <div style={{ fontSize:10, color:'var(--text-muted)', fontWeight:600,
+                textTransform:'uppercase', letterSpacing:'0.06em' }}>{label}</div>
+              <div style={{ fontSize:14, fontWeight:600, marginTop:3 }}>{value}</div>
             </div>
-          </div>
-          <div>
-            <div style={{ fontSize:10, color:'var(--text-muted)', fontWeight:600,
-              textTransform:'uppercase', letterSpacing:'0.06em' }}>Assigned To</div>
-            <div style={{ fontSize:14, fontWeight:600, marginTop:3 }}>
-              {site.assigned_to_name || '—'}
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize:10, color:'var(--text-muted)', fontWeight:600,
-              textTransform:'uppercase', letterSpacing:'0.06em' }}>Service Days</div>
-            <div style={{ fontSize:14, fontWeight:600, marginTop:3 }}>
-              {serviceInfo || <span style={{ color:'var(--text-muted)', fontWeight:400 }}>Not set</span>}
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize:10, color:'var(--text-muted)', fontWeight:600,
-              textTransform:'uppercase', letterSpacing:'0.06em' }}>Visits</div>
-            <div style={{ fontSize:14, fontWeight:600, marginTop:3 }}>
-              {visits.filter(v=>v.status==='completed').length} / {visits.length} done
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
@@ -297,15 +336,20 @@ export default function SiteDetail() {
         <div className="card">
           <div className="card-header">
             <span className="card-title">Visit Schedule & History</span>
-            <button className="btn btn-primary btn-sm"
-              onClick={() => setShowAddVisit(s => !s)}>
-              + Schedule Visit
-            </button>
+            {isHR && (
+              <button className="btn btn-primary btn-sm"
+                onClick={() => setShowAddVisit(s => !s)}>
+                + Schedule Visit
+              </button>
+            )}
           </div>
 
-          {showAddVisit && (
+          {/* Add Visit form — HR only */}
+          {isHR && showAddVisit && (
             <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--border-light)',
               background:'var(--surface-2)' }}>
+              <div style={{ fontWeight:600, fontSize:13, marginBottom:12,
+                color:'var(--text-primary)' }}>New Visit</div>
               <div className="form-grid">
                 <div className="form-group">
                   <label>Scheduled Date *</label>
@@ -318,9 +362,7 @@ export default function SiteDetail() {
                     onChange={e => setVisitForm(f => ({ ...f, technician_id: e.target.value }))}>
                     <option value="">Select employee...</option>
                     {employees.map(e => (
-                      <option key={e.id} value={e.id}>
-                        {e.emp_code} — {e.name}
-                      </option>
+                      <option key={e.id} value={e.id}>{e.emp_code} — {e.name}</option>
                     ))}
                   </select>
                 </div>
@@ -346,7 +388,7 @@ export default function SiteDetail() {
             {visits.length === 0 ? (
               <div className="empty-state">
                 <strong>No visits scheduled</strong>
-                <p>Add a visit using the button above.</p>
+                <p>{isHR ? 'Add a visit using the button above.' : 'No visits have been scheduled yet.'}</p>
               </div>
             ) : (
               <table>
@@ -366,17 +408,18 @@ export default function SiteDetail() {
                     const done      = Object.values(visit.checklist || {}).filter(Boolean).length
                     const total     = Object.keys(CHECKLIST_ITEMS).length
                     const isEditing = editVisit === visit.id
+                    const isRescheduling = rescheduleId === visit.id
                     const isOverdue = visit.status === 'scheduled' && visit.scheduled_date < today
+                    const canAct    = visit.status === 'scheduled' || visit.status === 'rescheduled'
 
                     return (
-                      <tr key={visit.id}
-                        style={{ background: isOverdue ? '#FFFBF0' : '' }}>
+                      <tr key={visit.id} style={{ background: isOverdue ? '#FFFBF0' : '' }}>
+
+                        {/* Date */}
                         <td style={{ fontFamily:'DM Mono,monospace', fontSize:12 }}>
                           {fmt(visit.scheduled_date)}
                           {isOverdue && (
-                            <div style={{ fontSize:10, color:'#F04438', fontWeight:600 }}>
-                              OVERDUE
-                            </div>
+                            <div style={{ fontSize:10, color:'#F04438', fontWeight:600 }}>OVERDUE</div>
                           )}
                           {visit.completed_date && visit.completed_date !== visit.scheduled_date && (
                             <div style={{ fontSize:10, color:'#12B76A' }}>
@@ -384,23 +427,27 @@ export default function SiteDetail() {
                             </div>
                           )}
                         </td>
+
+                        {/* Status */}
                         <td>
                           <span style={{ background:sc.bg, color:sc.color,
-                            padding:'2px 8px', borderRadius:20,
-                            fontSize:11, fontWeight:600 }}>
+                            padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:600 }}>
                             {sc.label}
                           </span>
                         </td>
+
+                        {/* Technician */}
                         <td style={{ fontSize:13 }}>
                           {visit.employees?.name || visit.technician_name || '—'}
                         </td>
+
+                        {/* Checklist */}
                         <td>
                           {isEditing ? (
                             <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
                               {Object.entries(CHECKLIST_ITEMS).map(([key, label]) => (
-                                <label key={key} style={{ display:'flex',
-                                  alignItems:'center', gap:6,
-                                  fontSize:11, cursor:'pointer',
+                                <label key={key} style={{ display:'flex', alignItems:'center',
+                                  gap:6, fontSize:11, cursor:'pointer',
                                   textTransform:'none', letterSpacing:'normal',
                                   fontWeight:'normal', color:'var(--text-primary)' }}>
                                   <input type="checkbox"
@@ -420,6 +467,8 @@ export default function SiteDetail() {
                             </span>
                           )}
                         </td>
+
+                        {/* Remarks */}
                         <td style={{ fontSize:12, color:'var(--text-secondary)' }}>
                           {isEditing ? (
                             <input value={visit.remarks || ''}
@@ -433,40 +482,117 @@ export default function SiteDetail() {
                               placeholder="Remarks..." />
                           ) : (visit.remarks || '—')}
                         </td>
-                        <td>
-                          <div className="flex gap-8">
-                            {visit.status === 'scheduled' && !isEditing && (
-                              <>
-                                {/* Technicians see Edit and Done */}
-                                {!isHR && (
-                                  <>
-                                    <button className="btn btn-outline btn-sm"
-                                      onClick={() => setEditVisit(visit.id)}
-                                      style={{ fontSize:11 }}>
-                                      ✏ Edit
-                                    </button>
-                                    <button className="btn btn-primary btn-sm"
-                                      onClick={() => markComplete(visit)}
-                                      style={{ fontSize:11 }}>
-                                      ✓ Done
-                                    </button>
-                                  </>
-                                )}
 
-                                {/* HR sees only Delete for managing schedule/mistakes */}
+                        {/* Actions */}
+                        <td>
+                          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+
+                            {/* ── Normal action buttons ── */}
+                            {canAct && !isEditing && !isRescheduling && (
+                              <div className="flex gap-8">
+                                <button className="btn btn-outline btn-sm"
+                                  onClick={() => setEditVisit(visit.id)}
+                                  style={{ fontSize:11 }}>
+                                  ✏ Edit
+                                </button>
+                                <button className="btn btn-primary btn-sm"
+                                  onClick={() => markComplete(visit)}
+                                  style={{ fontSize:11 }}>
+                                  ✓ Done
+                                </button>
+                                <button className="btn btn-outline btn-sm"
+                                  onClick={() => openReschedule(visit)}
+                                  style={{ fontSize:11, color:'#F79009', borderColor:'#F79009' }}>
+                                  📅 Reschedule
+                                </button>
+                                <button className="btn btn-outline btn-sm"
+                                  onClick={() => openWhatsApp(visit)}
+                                  title="Send WhatsApp reminder to customer"
+                                  style={{ fontSize:11, color:'#25D366', borderColor:'#25D366',
+                                    display:'flex', alignItems:'center', gap:4 }}>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="#25D366">
+                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                                  </svg>
+                                  WhatsApp
+                                </button>
                                 {isHR && (
                                   <button className="btn btn-outline btn-sm"
                                     onClick={() => deleteVisit(visit.id)}
-                                    style={{ fontSize:11, color:'#F04438',
-                                      borderColor:'#F04438' }}>
+                                    style={{ fontSize:11, color:'#F04438', borderColor:'#F04438' }}>
                                     🗑 Delete
                                   </button>
                                 )}
-                              </>
+                              </div>
                             )}
 
+                            {/* ── Reschedule inline form ── */}
+                            {isRescheduling && (
+                              <div style={{ background:'#FFFAEB', border:'1px solid #FEF0C7',
+                                borderRadius:8, padding:'12px 14px', minWidth:280 }}>
+                                <div style={{ fontWeight:600, fontSize:12,
+                                  color:'#B54708', marginBottom:10 }}>
+                                  📅 Reschedule Visit
+                                </div>
+                                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                                  <div>
+                                    <label style={{ fontSize:11, fontWeight:600,
+                                      color:'var(--text-muted)', display:'block', marginBottom:3 }}>
+                                      New Date *
+                                    </label>
+                                    <input type="date"
+                                      value={rescheduleForm.scheduled_date}
+                                      min={today}
+                                      onChange={e => setRescheduleForm(f =>
+                                        ({ ...f, scheduled_date: e.target.value }))}
+                                      style={{ width:'100%' }} />
+                                  </div>
+                                  <div>
+                                    <label style={{ fontSize:11, fontWeight:600,
+                                      color:'var(--text-muted)', display:'block', marginBottom:3 }}>
+                                      Technician
+                                    </label>
+                                    <select value={rescheduleForm.technician_id}
+                                      onChange={e => setRescheduleForm(f =>
+                                        ({ ...f, technician_id: e.target.value }))}
+                                      style={{ width:'100%' }}>
+                                      <option value="">Keep same / Unassigned</option>
+                                      {employees.map(e => (
+                                        <option key={e.id} value={e.id}>
+                                          {e.emp_code} — {e.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label style={{ fontSize:11, fontWeight:600,
+                                      color:'var(--text-muted)', display:'block', marginBottom:3 }}>
+                                      Reason
+                                    </label>
+                                    <input placeholder="e.g. Client requested, technician unavailable"
+                                      value={rescheduleForm.remarks}
+                                      onChange={e => setRescheduleForm(f =>
+                                        ({ ...f, remarks: e.target.value }))}
+                                      style={{ width:'100%' }} />
+                                  </div>
+                                  <div className="flex gap-8" style={{ marginTop:4 }}>
+                                    <button className="btn btn-primary btn-sm"
+                                      onClick={saveReschedule} disabled={saving}
+                                      style={{ fontSize:11 }}>
+                                      {saving ? 'Saving...' : 'Confirm Reschedule'}
+                                    </button>
+                                    <button className="btn btn-outline btn-sm"
+                                      onClick={() => setRescheduleId(null)}
+                                      style={{ fontSize:11 }}>
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* ── Edit mode save/cancel ── */}
                             {isEditing && (
-                              <>
+                              <div className="flex gap-8">
                                 <button className="btn btn-primary btn-sm"
                                   onClick={() => updateVisit(visit.id, {
                                     status          : visit.status,
@@ -483,7 +609,7 @@ export default function SiteDetail() {
                                   style={{ fontSize:11 }}>
                                   Cancel
                                 </button>
-                              </>
+                              </div>
                             )}
                           </div>
                         </td>
@@ -503,10 +629,12 @@ export default function SiteDetail() {
           <div style={{ display:'flex', justifyContent:'space-between',
             alignItems:'center', marginBottom:20 }}>
             <span className="card-title">Site Information</span>
-            <button className="btn btn-outline btn-sm"
-              onClick={() => setEditDetails(s => !s)}>
-              {editDetails ? 'Cancel' : '✏ Edit'}
-            </button>
+            {isHR && (
+              <button className="btn btn-outline btn-sm"
+                onClick={() => setEditDetails(s => !s)}>
+                {editDetails ? 'Cancel' : '✏ Edit'}
+              </button>
+            )}
           </div>
 
           {editDetails ? (
@@ -546,8 +674,6 @@ export default function SiteDetail() {
                   <input value={editForm.contact_phone}
                     onChange={e => setEditForm(f => ({ ...f, contact_phone: e.target.value }))} />
                 </div>
-
-                {/* Assign To — dynamic employee list */}
                 <div className="form-group full">
                   <label>Assign To Technician</label>
                   <select value={editForm.assigned_to_emp_code}
@@ -566,12 +692,7 @@ export default function SiteDetail() {
                       </option>
                     ))}
                   </select>
-                  <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:3 }}>
-                    All active employees — new joiners appear automatically
-                  </div>
                 </div>
-
-                {/* Service days */}
                 <div className="form-group">
                   <label>Service Day 1 (of month)</label>
                   <select value={editForm.service_day_1}
@@ -588,7 +709,6 @@ export default function SiteDetail() {
                     {DAYS.map(d => <option key={d} value={d}>{d}th of every month</option>)}
                   </select>
                 </div>
-
                 <div className="form-group full">
                   <label>Notes</label>
                   <input value={editForm.notes}
@@ -600,8 +720,7 @@ export default function SiteDetail() {
                 <button className="btn btn-primary" onClick={saveDetails} disabled={saving}>
                   {saving ? 'Saving...' : 'Save Changes'}
                 </button>
-                <button className="btn btn-outline"
-                  onClick={() => setEditDetails(false)}>
+                <button className="btn btn-outline" onClick={() => setEditDetails(false)}>
                   Cancel
                 </button>
               </div>
@@ -609,16 +728,19 @@ export default function SiteDetail() {
           ) : (
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:0 }}>
               {[
-                ['Site Name',       site.client_name],
-                ['Site Type',       site.site_type],
-                ['System Size',     site.system_size_kw ? `${site.system_size_kw} kW` : '—'],
-                ['AMC Valid Upto',  site.amc_valid_upto
-                  ? `${fmt(site.amc_valid_upto)}${daysLeft !== null ? ` (${isExpired ? Math.abs(daysLeft)+' days expired' : daysLeft+' days left'})` : ''}` : '—'],
-                ['Contact Name',    site.contact_name   || '—'],
-                ['Contact Phone',   site.contact_phone  || '—'],
-                ['Assigned To',     site.assigned_to_name ? `${site.assigned_to_name} (${site.assigned_to_emp_code})` : '—'],
-                ['Service Days',    serviceInfo || 'Not set'],
-                ['Notes',           site.notes  || '—'],
+                ['Site Name',      site.client_name],
+                ['Site Type',      site.site_type],
+                ['System Size',    site.system_size_kw ? `${site.system_size_kw} kW` : '—'],
+                ['AMC Valid Upto', site.amc_valid_upto
+                  ? `${fmt(site.amc_valid_upto)}${daysLeft !== null
+                    ? ` (${isExpired ? Math.abs(daysLeft)+' days expired' : daysLeft+' days left'})`
+                    : ''}` : '—'],
+                ['Contact Name',   site.contact_name  || '—'],
+                ['Contact Phone',  site.contact_phone || '—'],
+                ['Assigned To',    site.assigned_to_name
+                  ? `${site.assigned_to_name} (${site.assigned_to_emp_code})` : '—'],
+                ['Service Days',   serviceInfo || 'Not set'],
+                ['Notes',          site.notes  || '—'],
               ].map(([label, value]) => (
                 <div key={label} style={{ padding:'12px 0',
                   borderBottom:'1px solid var(--border-light)',
@@ -627,9 +749,7 @@ export default function SiteDetail() {
                     textTransform:'uppercase', letterSpacing:'0.05em', paddingTop:1 }}>
                     {label}
                   </div>
-                  <div style={{ fontSize:13.5, color:'var(--text-primary)' }}>
-                    {value}
-                  </div>
+                  <div style={{ fontSize:13.5, color:'var(--text-primary)' }}>{value}</div>
                 </div>
               ))}
             </div>

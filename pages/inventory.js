@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Layout from '../components/Layout'
 
 const CATEGORIES = [
@@ -28,7 +28,7 @@ const MOV_TYPES = [
   { value:'return',   label:'Return to HO',      color:'#F79009', icon:'↩' },
 ]
 
-const EMPTY_ITEM = { item_name:'', category:'panel', unit:'pcs', reorder_level:'', description:'', opening_stock:'' }
+const EMPTY_ITEM = { item_name:'', category:'solar_pv_modules', unit:'pcs', reorder_level:'', description:'', opening_stock:'' }
 const EMPTY_MOV  = { item_id:'', movement_type:'inward', quantity:'', from_location:'HO', to_location:'HO', site_id:'', reference:'', remarks:'', movement_date: new Date().toISOString().split('T')[0] }
 
 export default function Inventory() {
@@ -164,7 +164,6 @@ export default function Inventory() {
 
   // Stats
   const totalItems   = items.length
-  const totalHOStock = items.reduce((s, i) => s + i.ho_stock, 0)
   const lowCount     = lowStock.length
 
   const movTypeConf = (type) => MOV_TYPES.find(m => m.value === type) || MOV_TYPES[0]
@@ -178,7 +177,7 @@ export default function Inventory() {
         </div>
         <div className="flex gap-8 items-center">
           <button className="btn btn-outline" onClick={() => { setShowMovForm(s=>!s); setShowAddItem(false); setAlert(null) }}>
-            ⇄ Record Movement
+            ⇄ Material Dispatch
           </button>
           <button className="btn btn-primary" onClick={() => { setShowAddItem(s=>!s); setShowMovForm(false); setAlert(null) }}>
             + Add Item
@@ -257,7 +256,7 @@ export default function Inventory() {
       {/* Movement Form */}
       {showMovForm && (
         <div className="card card-pad" style={{ marginBottom:20 }}>
-          <div className="card-title" style={{ marginBottom:20 }}>Record Material Movement</div>
+          <div className="card-title" style={{ marginBottom:20 }}>Material Dispatch</div>
           <div className="form-grid">
             <div className="form-group">
               <label>Movement Type *</label>
@@ -319,7 +318,7 @@ export default function Inventory() {
 
           <div className="divider" />
           <div className="flex gap-8">
-            <button className="btn btn-primary" onClick={saveMovement} disabled={saving}>{saving?'Saving...':'Record Movement'}</button>
+            <button className="btn btn-primary" onClick={saveMovement} disabled={saving}>{saving?'Saving...':'Material Dispatch'}</button>
             <button className="btn btn-outline" onClick={() => setShowMovForm(false)}>Cancel</button>
           </div>
         </div>
@@ -530,7 +529,7 @@ export default function Inventory() {
             {movements.length === 0 ? (
               <div className="empty-state">
                 <strong>No movements yet</strong>
-                <p>Use "Record Movement" to log material in/out.</p>
+                <p>Use "Material Dispatch" to log material in/out.</p>
               </div>
             ) : (
               <table>
@@ -620,7 +619,7 @@ export default function Inventory() {
                 <div className="card">
                   <div className="empty-state">
                     <strong>No site stock yet</strong>
-                    <p>Issue material to a site using "Record Movement" → "Issue to Site".</p>
+                    <p>Issue material to a site using "Material Dispatch" → "Issue to Site".</p>
                   </div>
                 </div>
               )

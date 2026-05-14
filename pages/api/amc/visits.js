@@ -27,21 +27,26 @@ export default async function handler(req, res) {
   // PUT — update visit (complete, reschedule, add checklist)
   if (req.method === 'PUT') {
     const {
-      id, status, completed_date,
+      id, status, scheduled_date, completed_date,
       technician_id, technician_name,
       checklist, remarks
     } = req.body
 
+    const updates = {
+      status,
+      completed_date  : completed_date  || null,
+      technician_id   : technician_id   || null,
+      technician_name : technician_name || null,
+      checklist       : checklist       || {},
+      remarks         : remarks         || null,
+    }
+
+    // Only update scheduled_date when explicitly provided (reschedule flow)
+    if (scheduled_date) updates.scheduled_date = scheduled_date
+
     const { data, error } = await supabaseAdmin
       .from('amc_visits')
-      .update({
-        status,
-        completed_date  : completed_date  || null,
-        technician_id   : technician_id   || null,
-        technician_name : technician_name || null,
-        checklist       : checklist       || {},
-        remarks         : remarks         || null,
-      })
+      .update(updates)
       .eq('id', id)
       .select()
       .single()
