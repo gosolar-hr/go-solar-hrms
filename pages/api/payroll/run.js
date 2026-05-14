@@ -96,10 +96,6 @@ export default async function handler(req, res) {
   attendanceList.forEach(a => { attendanceMap[a.employee_id] = a })
 
   // ── STEP 5: Fetch late mark details (actual slabs) ────
-  const from = `${year}-${String(month).padStart(2,'0')}-01`
-  const lastDay = new Date(year, month, 0).getDate()
-  const to   = `${year}-${String(month).padStart(2,'0')}-${lastDay}`
-
   const { data: lateDetails } = await supabaseAdmin
     .from('attendance_details')
     .select('employee_id, salary_cut')
