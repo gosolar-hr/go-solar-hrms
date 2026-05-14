@@ -59,11 +59,22 @@ export default async function handler(req, res) {
   if (empError) return res.status(500).json({ error: empError.message })
 
   // ── STEP 3.5: Attendance Sync ────────────────────────
-  // Ensure day-level rows exist and summary is refreshed
-  // before calculating payroll.
+  // Pre-fetch holidays to avoid redundant DB calls in the loop
+  const from = `${year}-${String(month).padStart(2,'0')}-01`
+  const lastDay = new Date(year, month, 0).getDate()
+  const to   = `${year}-${String(month).padStart(2,'0')}-${lastDay}`
+
+  const { data: holidays } = await supabaseAdmin
+    .from('holidays')
+    .select('date')
+    .eq('is_active', true)
+    .gte('date', from)
+    .lte('date', to)
+  const holidayDates = new Set((holidays || []).map(h => h.date))
+
   for (const emp of employees || []) {
     try {
-      await ensureMonthlyAttendanceDetails(emp, month, year)
+      await ensureMonthlyAttendanceDetails(emp, month, year, holidayDates)
       await refreshAttendanceSummary(emp.id, month, year)
     } catch (syncError) {
       return res.status(500).json({
