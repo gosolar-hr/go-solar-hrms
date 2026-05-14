@@ -8,6 +8,10 @@ import {
   calculateNetSalary,
   calculateOtherDeductions,
 } from '../../../lib/payroll'
+import {
+  ensureMonthlyAttendanceDetails,
+  refreshAttendanceSummary,
+} from '../../../lib/attendanceUtils'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -53,6 +57,20 @@ export default async function handler(req, res) {
     .eq('is_active', true)
 
   if (empError) return res.status(500).json({ error: empError.message })
+
+  // ── STEP 3.5: Attendance Sync ────────────────────────
+  // Ensure day-level rows exist and summary is refreshed
+  // before calculating payroll.
+  for (const emp of employees || []) {
+    try {
+      await ensureMonthlyAttendanceDetails(emp, month, year)
+      await refreshAttendanceSummary(emp.id, month, year)
+    } catch (syncError) {
+      return res.status(500).json({
+        error: `Attendance sync failed for ${emp.name || emp.emp_code || emp.id}: ${syncError.message}`,
+      })
+    }
+  }
 
   // ── STEP 4: Fetch attendance summary ─────────────────
   const { data: attendanceList, error: attError } = await supabaseAdmin
