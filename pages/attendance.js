@@ -148,8 +148,8 @@ export default function Attendance() {
             else if (s === 'AO')              { ao++;      present += 0.5 }
             else if (s === 'A' || s === 'A:A' || s === 'LWP') { absent++ }
             else if (s === 'P:A' || s === 'A:P') { present += 0.5; absent += 0.5 }
-            else if (s === 'H')               { holiday++ }
-            else if (s === 'WO' || s === 'W/O') { wo++ }
+            else if (s === 'H')               { holiday++; present++ }
+            else if (s === 'WO' || s === 'W/O') { wo++;    present++ }
           })
         }
         setDbSummary({ present, absent, late, pl, mo, ao, holiday, wo })
@@ -241,12 +241,12 @@ export default function Attendance() {
         const s = (val?.status || '').toUpperCase().trim()
         if (s === 'P' || s === 'P:P') { present++; if (val.late_slab > 0) late++ }
         else if (s === 'PL')          { pl++;      present++ }
+        else if (s === 'WO' || s === 'W/O') { wo++; present++ }
+        else if (s === 'H')           { holiday++; present++ }
         else if (s === 'MO')          { mo++;      present += 0.5 }
         else if (s === 'AO')          { ao++;      present += 0.5 }
         else if (s === 'A' || s === 'A:A' || s === 'LWP') { absent++ }
         else if (s === 'P:A' || s === 'A:P') { present += 0.5; absent += 0.5 }
-        else if (s === 'H')           { holiday++ }
-        else if (s === 'WO' || s === 'W/O') { wo++ }
       })
       setDbSummary({ present, absent, late, pl, mo, ao, holiday, wo })
     }
@@ -418,6 +418,7 @@ export default function Attendance() {
     // Paid Leave
     else if (s === 'PL') {
       acc.pl++
+      acc.present++
     }
     // Morning Off — half day
     else if (s === 'MO') {
@@ -441,10 +442,12 @@ export default function Attendance() {
     // Holiday
     else if (s === 'H') {
       acc.holiday++
+      acc.present++
     }
     // Week Off — covers both WO and W/O
     else if (s === 'WO' || s === 'W/O') {
       acc.wo++
+      acc.present++
     }
 
     // Late marks — any present day with a slab
