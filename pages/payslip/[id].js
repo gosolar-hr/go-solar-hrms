@@ -190,7 +190,17 @@ export default function Payslip() {
         .slip-header {
           border-bottom: 2px solid #000;
           padding: 14px 20px 10px;
-          text-align: center;
+          display: flex;
+          align-items: center;
+          gap: 20px;
+          text-align: left;
+        }
+        .logo {
+          height: 60px;
+          width: auto;
+        }
+        .header-text {
+          flex: 1;
         }
         .company-name {
           font-size: 18px;
@@ -353,10 +363,13 @@ export default function Payslip() {
 
         {/* Header */}
         <div className="slip-header">
-          <div className="company-name">Go Solar Solutions</div>
-          <div className="company-addr">Warrington Renewsol Pvt. Ltd · Maharashtra</div>
-          <div className="slip-month-title">
-            Payslip for the month of {monthLabel} {year}
+          <img src="/logo.jpg" alt="Logo" className="logo" />
+          <div className="header-text">
+            <div className="company-name">Go Solar Solutions</div>
+            <div className="company-addr">Warrington Renewsol Pvt. Ltd · Maharashtra</div>
+            <div className="slip-month-title">
+              Payslip for the month of {monthLabel} {year}
+            </div>
           </div>
         </div>
 

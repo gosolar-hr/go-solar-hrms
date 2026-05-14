@@ -1,4 +1,6 @@
 import { supabaseAdmin } from '../../../lib/supabase'
+import fs from 'fs'
+import path from 'path'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
@@ -20,7 +22,7 @@ export default async function handler(req, res) {
   // Dynamically import docx (server-side only)
   const {
     Document, Packer, Paragraph, TextRun, AlignmentType,
-    HeadingLevel, BorderStyle, PageBreak, LevelFormat
+    HeadingLevel, BorderStyle, PageBreak, LevelFormat, ImageRun
   } = await import('docx')
 
   const CO = {
@@ -50,7 +52,27 @@ export default async function handler(req, res) {
     children:[TR(text)], spacing:{ after:80 }
   })
 
+  let logoData;
+  try {
+    const logoPath = path.join(process.cwd(), 'public', 'logo.jpg');
+    logoData = fs.readFileSync(logoPath);
+  } catch (e) {
+    console.error("Logo not found", e);
+  }
+
   const letterhead = () => [
+    ...(logoData ? [
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [
+          new ImageRun({
+            data: logoData,
+            transformation: { width: 80, height: 80 },
+          }),
+        ],
+        spacing: { after: 120 },
+      })
+    ] : []),
     new Paragraph({ children:[TR(CO.name, {bold:true, size:28})], alignment:AlignmentType.CENTER, spacing:{after:60} }),
     new Paragraph({ children:[TR(CO.full, {size:20})], alignment:AlignmentType.CENTER, spacing:{after:40} }),
     new Paragraph({ children:[TR(CO.addr1, {size:18})], alignment:AlignmentType.CENTER, spacing:{after:20} }),
