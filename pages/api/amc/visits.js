@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     const {
       id, status, scheduled_date, completed_date,
       technician_id, technician_name,
-      checklist, remarks
+      checklist, remarks, photo_urls
     } = req.body
 
     const updates = {
@@ -40,6 +40,9 @@ export default async function handler(req, res) {
       checklist       : checklist       || {},
       remarks         : remarks         || null,
     }
+
+    // Only update photo_urls when explicitly provided
+    if (photo_urls !== undefined) updates.photo_urls = photo_urls
 
     // Only update scheduled_date when explicitly provided (reschedule flow)
     if (scheduled_date) updates.scheduled_date = scheduled_date

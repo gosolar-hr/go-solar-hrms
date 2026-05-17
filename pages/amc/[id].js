@@ -43,6 +43,65 @@ export default function SiteDetail() {
   const [visitForm, setVisitForm] = useState({ scheduled_date:'', technician_id:'', remarks:'' })
   const [editForm,  setEditForm]  = useState({})
 
+  // ── Photo upload state ───────────────────────────────────────────
+  const [uploadVisitId,  setUploadVisitId]  = useState(null)   // visit being uploaded to
+  const [uploadFiles,    setUploadFiles]    = useState([])     // staged File objects
+  const [uploading,      setUploading]      = useState(false)
+  const [lightboxUrl,    setLightboxUrl]    = useState(null)   // photo preview
+
+  const MAX_IMAGE_MB  = 2
+  const MAX_PDF_MB    = 5
+  const MAX_FILES     = 5
+  const ALLOWED_TYPES = ['image/jpeg','image/jpg','image/png','image/webp','application/pdf']
+
+  const validateFiles = (files) => {
+    if (files.length > MAX_FILES) return `Max ${MAX_FILES} files at once`
+    for (const f of files) {
+      if (!ALLOWED_TYPES.includes(f.type))
+        return `"${f.name}" is not allowed. Only JPEG, PNG, WebP or PDF files.`
+      const limitMB = f.type === 'application/pdf' ? MAX_PDF_MB : MAX_IMAGE_MB
+      if (f.size > limitMB * 1024 * 1024)
+        return `"${f.name}" exceeds the ${limitMB} MB limit. Please compress it first.`
+    }
+    return null
+  }
+
+  const stageFiles = (fileList) => {
+    const files = Array.from(fileList)
+    const err   = validateFiles(files)
+    if (err) return setAlert({ type:'error', msg: err })
+    setUploadFiles(files)
+  }
+
+  const uploadPhotos = async (visitId) => {
+    if (!uploadFiles.length) return
+    setUploading(true)
+    const fd = new FormData()
+    fd.append('visitId', visitId)
+    uploadFiles.forEach(f => fd.append('files', f))
+    const res  = await fetch('/api/amc/upload', { method:'POST', body: fd })
+    const data = await res.json()
+    setUploading(false)
+    if (!res.ok) return setAlert({ type:'error', msg: data.error })
+    setAlert({ type:'success', msg:`${data.uploaded.length} file(s) uploaded.` })
+    setUploadFiles([])
+    setUploadVisitId(null)
+    load()
+  }
+
+  const deletePhoto = async (visitId, url) => {
+    if (!confirm('Remove this photo?')) return
+    const res  = await fetch('/api/amc/upload-delete', {
+      method:'DELETE',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ visitId, url }),
+    })
+    const data = await res.json()
+    if (!res.ok) return setAlert({ type:'error', msg: data.error })
+    setAlert({ type:'success', msg:'Photo removed.' })
+    load()
+  }
+
   const load = () => {
     if (!id) return
     const role = document.cookie.split(';').find(c => c.trim().startsWith('hrms_role='))
@@ -399,6 +458,7 @@ Thank you,
                     <th>Technician</th>
                     <th>Checklist</th>
                     <th>Remarks</th>
+                    <th>Photos</th>
                     <th>Action</th>
                   </tr>
                 </thead>
@@ -481,6 +541,99 @@ Thank you,
                               style={{ width:160 }}
                               placeholder="Remarks..." />
                           ) : (visit.remarks || '—')}
+                        </td>
+
+                        {/* ── Photos ── */}
+                        <td style={{ minWidth:160 }}>
+                          {/* Thumbnail strip */}
+                          {Array.isArray(visit.photo_urls) && visit.photo_urls.length > 0 && (
+                            <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom:6 }}>
+                              {visit.photo_urls.map((photo, pi) => (
+                                <div key={pi} style={{ position:'relative', display:'inline-block' }}>
+                                  {photo.type === 'pdf' ? (
+                                    <a href={photo.url} target="_blank" rel="noreferrer"
+                                      style={{ display:'flex', flexDirection:'column',
+                                        alignItems:'center', justifyContent:'center',
+                                        width:44, height:44, background:'#FEF3F2',
+                                        border:'1px solid #FECDCA', borderRadius:6,
+                                        fontSize:9, color:'#B42318', textDecoration:'none',
+                                        fontWeight:600, gap:1 }}>
+                                      <span style={{ fontSize:16 }}>📄</span>
+                                      PDF
+                                    </a>
+                                  ) : (
+                                    <img src={photo.url} alt={photo.name}
+                                      onClick={() => setLightboxUrl(photo.url)}
+                                      style={{ width:44, height:44, objectFit:'cover',
+                                        borderRadius:6, cursor:'pointer',
+                                        border:'1px solid #E4E7EC' }} />
+                                  )}
+                                  {/* Delete X button */}
+                                  <button onClick={() => deletePhoto(visit.id, photo.url)}
+                                    title="Remove photo"
+                                    style={{ position:'absolute', top:-5, right:-5,
+                                      width:16, height:16, background:'#F04438',
+                                      border:'none', borderRadius:'50%', color:'#fff',
+                                      fontSize:9, cursor:'pointer', lineHeight:'16px',
+                                      padding:0, display:'flex', alignItems:'center',
+                                      justifyContent:'center' }}>
+                                    ×
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Upload section — shown for ALL users (HR + Technician) */}
+                          {uploadVisitId === visit.id ? (
+                            <div style={{ background:'#F9FAFB', border:'1px dashed #D0D5DD',
+                              borderRadius:8, padding:'8px 10px', minWidth:200 }}>
+                              <div style={{ fontSize:11, fontWeight:600,
+                                color:'var(--text-muted)', marginBottom:6 }}>
+                                📎 Attach Files
+                                <span style={{ fontWeight:400, marginLeft:4 }}>
+                                  (JPEG/PNG/WebP ≤2 MB, PDF ≤5 MB, max 5 files)
+                                </span>
+                              </div>
+                              <input type="file" multiple
+                                accept=".jpg,.jpeg,.png,.webp,.pdf"
+                                onChange={e => stageFiles(e.target.files)}
+                                style={{ fontSize:11, marginBottom:6, display:'block' }} />
+                              {uploadFiles.length > 0 && (
+                                <div style={{ fontSize:10, color:'#344054',
+                                  marginBottom:6, lineHeight:'1.5' }}>
+                                  {uploadFiles.map((f,i) => (
+                                    <div key={i}>
+                                      {f.name} <span style={{ color:'#667085' }}>
+                                        ({(f.size/1024).toFixed(0)} KB)
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              <div className="flex gap-8">
+                                <button className="btn btn-primary btn-sm"
+                                  onClick={() => uploadPhotos(visit.id)}
+                                  disabled={uploading || !uploadFiles.length}
+                                  style={{ fontSize:11 }}>
+                                  {uploading ? 'Uploading…' : `Upload ${uploadFiles.length || ''}`}
+                                </button>
+                                <button className="btn btn-outline btn-sm"
+                                  onClick={() => { setUploadVisitId(null); setUploadFiles([]) }}
+                                  style={{ fontSize:11 }}>
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button className="btn btn-outline btn-sm"
+                              onClick={() => { setUploadVisitId(visit.id); setUploadFiles([]) }}
+                              style={{ fontSize:11, color:'#344054', borderColor:'#D0D5DD' }}>
+                              📎 {Array.isArray(visit.photo_urls) && visit.photo_urls.length
+                                ? `Add More (${visit.photo_urls.length})`
+                                : 'Attach'}
+                            </button>
+                          )}
                         </td>
 
                         {/* Actions */}
@@ -754,6 +907,25 @@ Thank you,
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Lightbox ───────────────────────────────────────────────── */}
+      {lightboxUrl && (
+        <div onClick={() => setLightboxUrl(null)}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)',
+            zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center',
+            cursor:'zoom-out' }}>
+          <img src={lightboxUrl} alt="Preview"
+            style={{ maxWidth:'92vw', maxHeight:'90vh', borderRadius:8,
+              boxShadow:'0 8px 40px rgba(0,0,0,0.6)' }} />
+          <button onClick={() => setLightboxUrl(null)}
+            style={{ position:'absolute', top:20, right:24, background:'#fff',
+              border:'none', borderRadius:'50%', width:36, height:36,
+              fontSize:20, cursor:'pointer', display:'flex',
+              alignItems:'center', justifyContent:'center' }}>
+            ×
+          </button>
         </div>
       )}
     </Layout>
