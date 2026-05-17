@@ -149,10 +149,6 @@ export default async function handler(req, res) {
       month, year
     )
 
-    const totalCTC = Number(emp.basic_salary||0) + Number(emp.hra||0) +
-                     Number(emp.cca||0) + Number(emp.conveyance||0) +
-                     Number(emp.allowances||0)
-
     const earnedBasic = totalCTC > 0
       ? Math.round(Number(emp.basic_salary || 0) * (earnedCTC / totalCTC))
       : 0
