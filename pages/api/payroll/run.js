@@ -149,20 +149,29 @@ export default async function handler(req, res) {
       month, year
     )
 
-    const pf   = calculatePF(emp)
+    const totalCTC = Number(emp.basic_salary||0) + Number(emp.hra||0) +
+                     Number(emp.cca||0) + Number(emp.conveyance||0) +
+                     Number(emp.allowances||0)
+
+    const earnedBasic = totalCTC > 0
+      ? Math.round(Number(emp.basic_salary || 0) * (earnedCTC / totalCTC))
+      : 0
+
+    const pf   = calculatePF(emp, earnedBasic)
     const esic = calculateESIC(emp, gross, earnedCTC)
     const pt   = calculatePT(gross, month, emp.gender)
     
     // Display-only deductions
     const otherDed = calculateOtherDeductions(emp, attendance, lateDeduction)
 
-    const net  = calculateNetSalary({
+    const net = calculateNetSalary({
       gross,
       pf,
       esicEmployee: esic.employee,
       pt,
       loan,
       advance,
+      otherDeduction: otherDed.total,
     })
 
     const row = {
