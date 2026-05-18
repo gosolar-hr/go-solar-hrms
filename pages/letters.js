@@ -41,21 +41,31 @@ export default function Letters() {
 
   // Form data
   const [form, setForm] = useState({
-    // Common
-    date        : new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'2-digit',year:'numeric'}),
-    address     : '',
-    phone       : '',
-    email       : '',
-    // Appointment
-    reportingTo      : 'Usman Begawala',
-    contractDuration : '2 years',
-    responsibilities : '',
+    date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+
+    // Appointment editable fields
+    candidateName: '',
+    salutation: 'Mr.',
+    address: '',
+    phone: '',
+    email: '',
+    designation: '',
+    reportingTo: 'Mr. Usman Begawala',
+    joiningDate: '',
+    contractDuration: '2 years',
+    salary: '',
+    responsibilities: '',
+    acceptanceText: 'I hereby acknowledge that I have read, understood, and agreed to all terms and conditions of this Appointment Letter and its Annexures.',
+    acceptanceName: '',
+    acceptanceDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+    acceptancePlace: 'Vashi, Navi Mumbai',
+
     // Warning
-    warningLevel   : '1st',
-    incidentDate   : '',
-    incidentDetail : '',
-    expectedAction : '',
-    hrManager      : 'Usman Begawala',
+    warningLevel: '1st',
+    incidentDate: '',
+    incidentDetail: '',
+    expectedAction: '',
+    hrManager: 'Usman Begawala',
   })
 
   useEffect(() => {
@@ -81,32 +91,52 @@ export default function Letters() {
   const onChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
 
   const generate = async () => {
-    if (!selectedEmp) return setAlert({ type:'error', msg:'Please select an employee' })
+    if (letterType === 'warning' && !selectedEmp) {
+      return setAlert({ type: 'error', msg: 'Please select an employee' })
+    }
+
+    if (letterType === 'appointment' && !form.candidateName.trim()) {
+      return setAlert({ type: 'error', msg: 'Please enter candidate name' })
+    }
+
     setGenerating(true)
     setAlert(null)
 
     const extra = letterType === 'appointment' ? {
-      date            : form.date,
-      address         : form.address,
-      phone           : form.phone,
-      email           : form.email,
-      reportingTo     : form.reportingTo,
+      date: form.date,
+      candidateName: form.candidateName,
+      salutation: form.salutation,
+      address: form.address,
+      phone: form.phone,
+      email: form.email,
+      designation: form.designation,
+      reportingTo: form.reportingTo,
+      joiningDate: form.joiningDate,
       contractDuration: form.contractDuration,
-      responsibilities: form.responsibilities.split('\n').filter(Boolean),
+      salary: form.salary,
+      responsibilities: form.responsibilities.split('\n').map(x => x.trim()).filter(Boolean),
+      acceptanceText: form.acceptanceText,
+      acceptanceName: form.acceptanceName || form.candidateName,
+      acceptanceDate: form.acceptanceDate || form.date,
+      acceptancePlace: form.acceptancePlace,
     } : {
-      date           : form.date,
-      warningLevel   : form.warningLevel,
-      incidentDate   : form.incidentDate,
-      incidentDetail : form.incidentDetail,
-      expectedAction : form.expectedAction,
-      hrManager      : form.hrManager,
+      date: form.date,
+      warningLevel: form.warningLevel,
+      incidentDate: form.incidentDate,
+      incidentDetail: form.incidentDetail,
+      expectedAction: form.expectedAction,
+      hrManager: form.hrManager,
     }
 
     try {
       const res = await fetch('/api/letters/generate', {
-        method : 'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body   : JSON.stringify({ type: letterType, employee_id: selectedEmp, extra }),
+        body: JSON.stringify({
+          type: letterType,
+          employee_id: letterType === 'warning' ? selectedEmp : null,
+          extra,
+        }),
       })
 
       if (!res.ok) {
@@ -115,16 +145,22 @@ export default function Letters() {
       }
 
       const blob = await res.blob()
-      const url  = window.URL.createObjectURL(blob)
-      const a    = document.createElement('a')
-      a.href     = url
-      const emp  = employees.find(e => e.id === selectedEmp)
-      a.download = `${letterType}_letter_${emp?.emp_code || 'employee'}.docx`
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+
+      const emp = employees.find(e => e.id === selectedEmp)
+      const fileName = letterType === 'appointment'
+        ? `appointment_letter_${form.candidateName || 'candidate'}.docx`
+        : `${letterType}_letter_${emp?.emp_code || 'employee'}.docx`
+
+      a.download = fileName.replace(/\s+/g, '_')
       a.click()
       window.URL.revokeObjectURL(url)
-      setAlert({ type:'success', msg:'Letter generated and downloaded successfully!' })
+
+      setAlert({ type: 'success', msg: 'Letter generated and downloaded successfully!' })
     } catch (err) {
-      setAlert({ type:'error', msg: err.message || 'Failed to generate letter' })
+      setAlert({ type: 'error', msg: err.message || 'Failed to generate letter' })
     } finally {
       setGenerating(false)
     }
@@ -154,60 +190,62 @@ export default function Letters() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
           {/* Step 1 — Select Employee */}
-          <div className="card card-pad">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <div style={{
-                width: 28, height: 28, borderRadius: '50%',
-                background: selectedEmp ? '#ECFDF3' : '#F97316',
-                border: `2px solid ${selectedEmp ? '#A9EFC5' : '#F97316'}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 12, fontWeight: 700,
-                color: selectedEmp ? '#027A48' : '#fff',
-                flexShrink: 0,
-              }}>
-                {selectedEmp ? '✓' : '1'}
+          {letterType === 'warning' && (
+            <div className="card card-pad">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%',
+                  background: selectedEmp ? '#ECFDF3' : '#F97316',
+                  border: `2px solid ${selectedEmp ? '#A9EFC5' : '#F97316'}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 12, fontWeight: 700,
+                  color: selectedEmp ? '#027A48' : '#fff',
+                  flexShrink: 0,
+                }}>
+                  {selectedEmp ? '✓' : '1'}
+                </div>
+                <span className="card-title">Select Employee</span>
               </div>
-              <span className="card-title">Select Employee</span>
-            </div>
-            <select
-              value={selectedEmp}
-              onChange={e => setSelectedEmp(e.target.value)}
-              style={{ width: '100%' }}
-            >
-              <option value="">Choose employee...</option>
-              {employees.map(e => (
-                <option key={e.id} value={e.id}>
-                  {e.emp_code} — {e.name} ({e.designation})
-                </option>
-              ))}
-            </select>
-            {selectedEmployee && (
-              <div style={{
-                marginTop: 12, padding: '10px 14px',
-                background: 'var(--bg)', borderRadius: 8,
-                border: '1px solid var(--border-light)',
-                display: 'flex', gap: 16, fontSize: 12,
-              }}>
-                <div>
-                  <div style={{ color: 'var(--text-muted)', marginBottom: 2 }}>Department</div>
-                  <div style={{ fontWeight: 600 }}>{selectedEmployee.department}</div>
-                </div>
-                <div>
-                  <div style={{ color: 'var(--text-muted)', marginBottom: 2 }}>Designation</div>
-                  <div style={{ fontWeight: 600 }}>{selectedEmployee.designation}</div>
-                </div>
-                <div>
-                  <div style={{ color: 'var(--text-muted)', marginBottom: 2 }}>Joined</div>
-                  <div style={{ fontWeight: 600 }}>
-                    {selectedEmployee.date_of_joining
-                      ? new Date(selectedEmployee.date_of_joining).toLocaleDateString('en-IN',
-                          { day: '2-digit', month: 'short', year: 'numeric' })
-                      : '—'}
+              <select
+                value={selectedEmp}
+                onChange={e => setSelectedEmp(e.target.value)}
+                style={{ width: '100%' }}
+              >
+                <option value="">Choose employee...</option>
+                {employees.map(e => (
+                  <option key={e.id} value={e.id}>
+                    {e.emp_code} — {e.name} ({e.designation})
+                  </option>
+                ))}
+              </select>
+              {selectedEmployee && (
+                <div style={{
+                  marginTop: 12, padding: '10px 14px',
+                  background: 'var(--bg)', borderRadius: 8,
+                  border: '1px solid var(--border-light)',
+                  display: 'flex', gap: 16, fontSize: 12,
+                }}>
+                  <div>
+                    <div style={{ color: 'var(--text-muted)', marginBottom: 2 }}>Department</div>
+                    <div style={{ fontWeight: 600 }}>{selectedEmployee.department}</div>
+                  </div>
+                  <div>
+                    <div style={{ color: 'var(--text-muted)', marginBottom: 2 }}>Designation</div>
+                    <div style={{ fontWeight: 600 }}>{selectedEmployee.designation}</div>
+                  </div>
+                  <div>
+                    <div style={{ color: 'var(--text-muted)', marginBottom: 2 }}>Joined</div>
+                    <div style={{ fontWeight: 600 }}>
+                      {selectedEmployee.date_of_joining
+                        ? new Date(selectedEmployee.date_of_joining).toLocaleDateString('en-IN',
+                            { day: '2-digit', month: 'short', year: 'numeric' })
+                        : '—'}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
           {/* Step 2 — Select Letter Type */}
           <div className="card card-pad">
@@ -259,13 +297,13 @@ export default function Letters() {
           <button
             className="btn btn-primary"
             onClick={generate}
-            disabled={generating || !selectedEmp}
+            disabled={generating || (letterType === 'warning' && !selectedEmp)}
             style={{
               width: '100%', height: 52,
               fontSize: 15, fontWeight: 700,
               display: 'flex', alignItems: 'center',
               justifyContent: 'center', gap: 10,
-              opacity: (!selectedEmp || generating) ? 0.6 : 1,
+              opacity: (generating || (letterType === 'warning' && !selectedEmp)) ? 0.6 : 1,
             }}
           >
             {generating ? (
@@ -309,45 +347,66 @@ export default function Letters() {
             {/* APPOINTMENT FIELDS */}
             {letterType === 'appointment' && (
               <>
-                <div className="form-group">
-                  <label>Employee Address</label>
-                  <input name="address" value={form.address} onChange={onChange} placeholder="Full residential address" />
-                </div>
                 <div className="form-grid">
                   <div className="form-group">
-                    <label>Phone</label>
-                    <input name="phone" value={form.phone} onChange={onChange} placeholder="9876543210" />
-                  </div>
-                  <div className="form-group">
-                    <label>Email</label>
-                    <input name="email" value={form.email} onChange={onChange} placeholder="emp@example.com" />
-                  </div>
-                  <div className="form-group">
-                    <label>Reporting To</label>
-                    <input name="reportingTo" value={form.reportingTo} onChange={onChange} />
-                  </div>
-                  <div className="form-group">
-                    <label>Contract Duration</label>
-                    <select name="contractDuration" value={form.contractDuration} onChange={onChange}>
-                      <option value="1 year">1 Year</option>
-                      <option value="2 years">2 Years</option>
-                      <option value="3 years">3 Years</option>
-                      <option value="Permanent">Permanent</option>
+                    <label>Salutation</label>
+                    <select name="salutation" value={form.salutation} onChange={onChange}>
+                      <option value="Mr.">Mr.</option>
+                      <option value="Ms.">Ms.</option>
+                      <option value="Mrs.">Mrs.</option>
                     </select>
                   </div>
+
+                  <div className="form-group">
+                    <label>Name</label>
+                    <input name="candidateName" value={form.candidateName} onChange={onChange} placeholder="Employee name" />
+                  </div>
                 </div>
+
                 <div className="form-group">
-                  <label>
-                    Roles & Responsibilities (Annexure B)
-                    <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>
-                      — one per line, fully editable
-                    </span>
-                  </label>
+                  <label>Address</label>
+                  <textarea name="address" value={form.address} onChange={onChange} rows={3} placeholder="Full residential address" />
+                </div>
+
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label>Mobile Number</label>
+                    <input name="phone" value={form.phone} onChange={onChange} placeholder="9876543210" />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Email ID</label>
+                    <input name="email" value={form.email} onChange={onChange} placeholder="employee@example.com" />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Designation</label>
+                    <input name="designation" value={form.designation} onChange={onChange} placeholder="SEO & Digital Marketing Executive" />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Reporting Person</label>
+                    <input name="reportingTo" value={form.reportingTo} onChange={onChange} placeholder="Mr. Usman Begawala" />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Contract Confirmation Date</label>
+                    <input name="joiningDate" value={form.joiningDate} onChange={onChange} placeholder="March 5th, 2026" />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Monthly Salary</label>
+                    <input name="salary" value={form.salary} onChange={onChange} placeholder="32,000" />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Roles & Responsibilities - Annexure B</label>
                   <textarea
                     name="responsibilities"
                     value={form.responsibilities}
                     onChange={onChange}
-                    rows={8}
+                    rows={10}
                     placeholder="Enter each responsibility on a new line..."
                     style={{
                       width: '100%', padding: '10px 12px',
@@ -356,22 +415,38 @@ export default function Letters() {
                       lineHeight: 1.6, resize: 'vertical', color: 'var(--text-primary)',
                     }}
                   />
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                    {form.responsibilities.split('\n').filter(Boolean).length} responsibilities added
-                    {selectedEmployee?.designation && DEFAULT_RESPONSIBILITIES[selectedEmployee.designation] && (
-                      <button
-                        onClick={() => setForm(f => ({
-                          ...f,
-                          responsibilities: DEFAULT_RESPONSIBILITIES[selectedEmployee.designation].join('\n')
-                        }))}
-                        style={{
-                          marginLeft: 10, fontSize: 11, color: 'var(--accent)',
-                          background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600
-                        }}
-                      >
-                        Reset to defaults for {selectedEmployee.designation}
-                      </button>
-                    )}
+                </div>
+
+                <div className="form-group">
+                  <label>Employee Acceptance Text</label>
+                  <textarea
+                    name="acceptanceText"
+                    value={form.acceptanceText}
+                    onChange={onChange}
+                    rows={3}
+                    style={{
+                      width: '100%', padding: '10px 12px',
+                      border: '1.5px solid var(--border)', borderRadius: 8,
+                      fontSize: 13, fontFamily: 'DM Sans, sans-serif',
+                      lineHeight: 1.6, resize: 'vertical', color: 'var(--text-primary)',
+                    }}
+                  />
+                </div>
+
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label>Acceptance Name</label>
+                    <input name="acceptanceName" value={form.acceptanceName} onChange={onChange} placeholder="Employee name" />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Acceptance Date</label>
+                    <input name="acceptanceDate" value={form.acceptanceDate} onChange={onChange} placeholder="05/03/2026" />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Acceptance Place</label>
+                    <input name="acceptancePlace" value={form.acceptancePlace} onChange={onChange} placeholder="Vashi, Navi Mumbai" />
                   </div>
                 </div>
               </>

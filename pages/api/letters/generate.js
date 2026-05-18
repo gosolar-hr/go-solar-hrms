@@ -7,17 +7,26 @@ export default async function handler(req, res) {
 
   const { type, employee_id, extra } = req.body
 
-  if (!type || !employee_id) {
-    return res.status(400).json({ error: 'type and employee_id required' })
+  if (!type) {
+    return res.status(400).json({ error: 'type required' })
   }
 
-  const { data: emp, error } = await supabaseAdmin
-    .from('employees')
-    .select('*')
-    .eq('id', employee_id)
-    .single()
+  let emp = null
 
-  if (error || !emp) return res.status(404).json({ error: 'Employee not found' })
+  if (type !== 'appointment') {
+    if (!employee_id) {
+      return res.status(400).json({ error: 'employee_id required' })
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('employees')
+      .select('*')
+      .eq('id', employee_id)
+      .single()
+
+    if (error || !data) return res.status(404).json({ error: 'Employee not found' })
+    emp = data
+  }
 
   // Dynamically import docx (server-side only)
   const {
@@ -26,10 +35,10 @@ export default async function handler(req, res) {
   } = await import('docx')
 
   const CO = {
-    name    : 'GO – SOLAR SOLUTIONS',
-    full    : 'Warrington Renewsol Pvt. Ltd',
-    addr1   : '1st Floor, Go Solar House, Plot no. 130, Behind APMC Police Station,',
-    addr2   : 'Sector 19C, APMC Market 1, Vashi, Navi Mumbai, Maharashtra 400703',
+    title: 'Appointment Letter with GO-SOLAR',
+    brand: 'A Brand By Warrington Renewsol Pvt. Ltd',
+    contact: 'www.gosolar.co.in | +91 899 99 33 899 | sales@gosolar.co.in',
+    address: '1st Floor, Go Solar House, Plot No.130, APMC Market, Vashi, Navi Mumbai- 400 705',
     director: 'Usman Begawala',
     dirTitle: 'Director',
   }
@@ -61,23 +70,26 @@ export default async function handler(req, res) {
   }
 
   const letterhead = () => [
-    ...(logoData ? [
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        children: [
-          new ImageRun({
-            data: logoData,
-            transformation: { width: 80, height: 80 },
-          }),
-        ],
-        spacing: { after: 120 },
-      })
-    ] : []),
-    new Paragraph({ children:[TR(CO.name, {bold:true, size:28})], alignment:AlignmentType.CENTER, spacing:{after:60} }),
-    new Paragraph({ children:[TR(CO.full, {size:20})], alignment:AlignmentType.CENTER, spacing:{after:40} }),
-    new Paragraph({ children:[TR(CO.addr1, {size:18})], alignment:AlignmentType.CENTER, spacing:{after:20} }),
-    new Paragraph({ children:[TR(CO.addr2, {size:18})], alignment:AlignmentType.CENTER, spacing:{after:60} }),
-    divider(), empty(),
+    new Paragraph({
+      children: [TR(CO.title, { bold: true, size: 24 })],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 80 },
+    }),
+    new Paragraph({
+      children: [TR(CO.brand, { size: 20 })],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 120 },
+    }),
+    new Paragraph({
+      children: [TR(CO.contact, { size: 18 })],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 100 },
+    }),
+    new Paragraph({
+      children: [TR(CO.address, { size: 18 })],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 220 },
+    }),
   ]
 
   const NUMBERING = {
@@ -96,163 +108,204 @@ export default async function handler(req, res) {
   // ───────────────────────────────────────────────
   if (type === 'appointment') {
     const {
-      date             = new Date().toLocaleDateString('en-IN', {day:'2-digit',month:'2-digit',year:'numeric'}),
-      address          = '',
-      phone            = emp.phone || '',
-      email            = emp.email || '',
-      reportingTo      = CO.director,
-      joiningDate      = emp.date_of_joining
-        ? new Date(emp.date_of_joining).toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'})
-        : '',
+      date = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+      candidateName = '',
+      salutation = 'Mr.',
+      address = '',
+      phone = '',
+      email = '',
+      designation = '',
+      reportingTo = CO.director,
+      joiningDate = '',
       contractDuration = '2 years',
+      salary = '',
       responsibilities = [],
+      acceptanceText = 'I hereby acknowledge that I have read, understood, and agreed to all terms and conditions of this Appointment Letter and its Annexures.',
+      acceptanceName = candidateName,
+      acceptanceDate = date,
+      acceptancePlace = 'Vashi, Navi Mumbai',
     } = extra || {}
 
-    const sal   = emp.gender?.toLowerCase() === 'female' ? 'Ms.' : 'Mr.'
-    const name  = emp.name || ''
-    const desig = emp.designation || ''
-    const salary = (
-      (Number(emp.basic_salary)||0) + (Number(emp.hra)||0) +
-      (Number(emp.cca)||0) + (Number(emp.conveyance)||0) +
-      (Number(emp.allowances)||0)
-    ).toLocaleString('en-IN')
+    if (!candidateName) {
+      return res.status(400).json({ error: 'candidateName required' })
+    }
+
+    const firstName = candidateName.trim().split(' ')[0]
+    const salaryText = salary ? `INR ${salary}/-` : 'INR __________/-'
 
     doc = new Document({
-      numbering: NUMBERING, styles: DOC_STYLES,
-      sections:[{ properties:{ page: PAGE }, children:[
-        ...letterhead(),
-        p([TR(`Date: ${date}`)]), empty(),
-        p([TR('To,')]),
-        p([TR(name.toUpperCase(), {bold:true})]),
-        ...(address ? [p([TR(address)])] : []),
-        ...(phone   ? [p([TR(`Mobile: ${phone}`)])] : []),
-        ...(email   ? [p([TR(`Mail Id: ${email}`)])] : []),
-        empty(),
-        p([TR('Subject: Appointment Letter', {bold:true})]), empty(),
-        p([TR(`Dear ${sal} ${name.split(' ')[0]},`)]), empty(),
-        new Paragraph({ spacing:{after:120}, children:[
-          TR('We are pleased to appoint you as '), TR(desig, {bold:true}),
-          TR(' at GO–SOLAR Solutions. Your selection is based on your qualifications, experience, and suitability for the role.'),
-        ]}),
-        p([TR('We look forward to you joining us. Please sign the duplicate and attach a copy of your PAN Card/Aadhaar Card as acceptance.')]),
-        empty(),
-        p([TR('Congratulations!', {bold:true})], {align:AlignmentType.CENTER}),
-        empty(), empty(),
-        p([TR(CO.director, {bold:true})]), p([TR(CO.dirTitle)]), p([TR('GO– Solar Solutions', {bold:true})]),
+      numbering: NUMBERING,
+      styles: DOC_STYLES,
+      sections: [{
+        properties: { page: PAGE },
+        children: [
+          ...letterhead(),
 
-        // ── ANNEXURE A ──
-        new Paragraph({ children:[new PageBreak()], spacing:{after:0} }),
-        new Paragraph({ children:[TR('ANNEXURE – A', {bold:true, size:24})], alignment:AlignmentType.CENTER, spacing:{after:120} }),
-        new Paragraph({ children:[TR('TERMS & CONDITIONS OF EMPLOYMENT', {bold:true})], alignment:AlignmentType.CENTER, spacing:{after:240} }),
+          p([TR(`Date: ${date}`)]),
+          empty(),
 
-        h('1. Designation & Reporting:'),
-        new Paragraph({ spacing:{after:120}, children:[TR('You are appointed as '), TR(desig, {bold:true}), TR(` reporting to ${reportingTo}. Your roles and responsibilities are detailed in Annexure B.`)]}),
+          p([TR('To,')]),
+          p([TR(candidateName.toUpperCase(), { bold: true })]),
+          ...(address ? address.split('\n').map(line => p([TR(line)])) : []),
+          ...(phone ? [p([TR(`Mobile: ${phone}`)])] : []),
+          ...(email ? [p([TR(`Mail Id: ${email}`)])] : []),
+          empty(),
 
-        h('2. Contract Confirmation & Duration:'),
-        p([TR(`Your contract confirmation date will be ${joiningDate}.`)]),
-        p([TR(`The duration of your employment contract is ${contractDuration}.`)]),
-        p([TR("If you resign during this contract period, you will be required to pay one month's salary as penalty, as per company policy.")]),
+          p([TR('Subject: Appointment Letter', { bold: true })]),
+          empty(),
 
-        h('3. Exclusivity of Employment:'),
-        p([TR('You must devote your full working hours and efforts solely to GO–SOLAR. You are strictly prohibited from engaging in any job, business, freelancing, or consultancy with any other organization during employment.')]),
+          p([TR(`Dear ${salutation} ${firstName},`)]),
 
-        h('4. Intellectual Property & Ownership of Work:'),
-        p([TR('All customer details, pricing information, lead data, proposals, quotations, and business strategies accessed during your employment shall remain the exclusive property of GO–SOLAR.')]),
-        p([TR('You are strictly prohibited from:')]),
-        bullet('Sharing customer lists, lead data, pricing, or business strategies with any external party.'),
-        bullet('Using company data or customer information for personal benefit or for any competitor.'),
-        bullet('Disclosing commercial offers, margins, or internal processes without written approval.'),
-        bullet('Storing or transferring company data to personal devices without authorization.'),
-        p([TR('Any misuse or unauthorized sharing will be treated as a serious breach and may lead to immediate termination and legal action.')]),
+          p([TR(`We are pleased to appoint you as ${designation} at GO-SOLAR Solutions.`)]),
+          p([TR('Your selection is based on your qualifications, experience, and suitability for the role.')]),
+          p([TR('Your appointment will be governed by the terms and conditions mentioned in this letter and the attached Annexures.')]),
+          empty(),
+          p([TR('Your appointment will be governed by the terms and conditions presented in the Annexure A.')]),
+          empty(),
+          p([TR('We look forward to you joining us. Please do not hesitate to call us for any information you may need.')]),
+          p([TR('Also, please sign the duplicate of this offer and attach a copy of your PAN Card/Aadhaar Card as your acceptance and forward the same to us.')]),
+          empty(),
 
-        h('5. Data Privacy & Confidentiality:'),
-        p([TR('GO–SOLAR follows a zero-tolerance policy towards data breaches. Upon exit, all company data must be handed over and permanently deleted from personal devices.')]),
+          p([TR('Congratulations!')]),
+          empty(),
+          empty(),
 
-        h('6. Dual Employment Restriction:'),
-        p([TR('You shall not engage, directly or indirectly, with any other organization. Violation will result in immediate termination.')]),
+          p([TR(CO.director)]),
+          p([TR(CO.dirTitle)]),
+          p([TR('GO- Solar Solutions')]),
 
-        h('7. Notice Period & Termination:'),
-        p([TR('The applicable notice period:')]),
-        bullet('Up to 2 years of service: 1 month'),
-        bullet('More than 2 years and up to 4 years: 2 months'),
-        bullet('More than 4 years: 3 months'),
-        p([TR('The company may terminate without notice in case of misconduct or breach of confidentiality.')]),
+          new Paragraph({ children: [new PageBreak()], spacing: { after: 0 } }),
 
-        h('8. Code of Conduct:'),
-        p([TR('You are required to maintain professionalism, discipline, and respectful behaviour at all times.')]),
+          ...letterhead(),
+          new Paragraph({ children: [TR('ANNEXURE - A', { bold: true, size: 24 })], alignment: AlignmentType.CENTER, spacing: { after: 160 } }),
+          new Paragraph({ children: [TR('TERMS & CONDITIONS OF EMPLOYMENT', { bold: true })], alignment: AlignmentType.CENTER, spacing: { after: 240 } }),
 
-        h('9. Work Culture & Performance:'),
-        p([TR('We value initiative, creativity, and dedication. Exceptional performance will be rewarded through company recognition programs.')]),
+          h('1. Designation & Reporting:'),
+          p([TR(`You are appointed as ${designation} reporting to ${reportingTo}.`)]),
+          p([TR('Your roles and responsibilities are detailed in Annexure B.')]),
 
-        h('10. Continuous Feedback & Improvement:'),
-        p([TR('You will receive regular feedback from your Reporting Manager and are encouraged to seek clarification for continuous improvement.')]),
+          h('2. Contract Confirmation & Duration:'),
+          p([TR(`Your contract confirmation date will be ${joiningDate}.`)]),
+          p([TR(`The duration of your employment contract is ${contractDuration}.`)]),
+          p([TR("If you resign during this contract period, you will be required to pay one month's salary as penalty, as per company policy.")]),
 
-        h('11. Salary & Reimbursements:'),
-        p([TR(`Your monthly salary will be INR ${salary}/-`)]),
-        p([TR('Approved official expenses will be reimbursed on actuals, subject to valid bills.')]),
+          h('3. Exclusivity of Employment:'),
+          p([TR('You must devote your full working hours and efforts solely to GO-SOLAR.')]),
+          p([TR('You are strictly prohibited from engaging in any job, business, freelancing, or consultancy with any other organization during employment.')]),
 
-        h('12. Incentive Structure – Solar Power Plant (SPP):'),
-        p([TR('In addition to salary, you will be eligible for incentives as follows:')]),
-        bullet('1KW – 50KW: 2% of Invoice Value'),
-        bullet('50KW – 250KW: 1.5% of Invoice Value'),
-        bullet('250KW & above: 1% of Invoice Value'),
-        p([TR('Incentives will be shared among members involved in closing the sale.')]),
+          h('4. Intellectual Property & Ownership of Work:'),
+          p([TR('All customer details, pricing information, lead data, proposals, quotations, commercial terms, and business strategies accessed during your employment shall remain the exclusive property of GO-SOLAR.')]),
+          p([TR('You are strictly prohibited from:')]),
+          bullet('Sharing customer lists, lead data, pricing, proposals, or business strategies with any external individual or organization.'),
+          bullet('Using company data or customer information for personal benefit or for any competitor.'),
+          bullet('Disclosing commercial offers, margins, internal processes, or business models without written approval from management.'),
+          bullet('Storing or transferring company/customer data to personal devices, WhatsApp groups, emails, or social media without authorization.'),
+          p([TR('Any misuse, leakage, or unauthorized sharing of sales data or customer information will be treated as a serious breach of confidentiality and may lead to immediate termination and legal action as per company policy.')]),
 
-        h('13. Company Property:'),
-        p([TR('All company materials issued must be returned on your last working day. Any non-return may be recovered from final settlement.')]),
+          h('5. Data Privacy & Confidentiality:'),
+          p([TR('GO-SOLAR follows a zero-tolerance policy towards data breaches.')]),
+          p([TR('You must protect all client, customer, technical, and company data accessed during employment.')]),
+          p([TR('Upon exit, all company data stored on your personal devices must be handed over and permanently deleted.')]),
 
-        h('14. Amendments:'),
-        p([TR('GO–SOLAR reserves the right to modify terms of employment at any time. Updates shall be binding on all employees.')]),
-        divider(),
+          h('6. Dual Employment Restriction:'),
+          p([TR('You shall not engage, directly or indirectly, with any other organization in any form.')]),
+          p([TR('Violation will result in immediate termination and financial liabilities as assessed by the company.')]),
 
-        // ── ANNEXURE B ──
-        new Paragraph({ children:[new PageBreak()], spacing:{after:0} }),
-        new Paragraph({ children:[TR('ANNEXURE – B', {bold:true, size:24})], alignment:AlignmentType.CENTER, spacing:{after:120} }),
-        new Paragraph({ children:[TR(`ROLES & RESPONSIBILITIES (${desig.toUpperCase()}):`, {bold:true})], alignment:AlignmentType.CENTER, spacing:{after:240} }),
-        ...(responsibilities.length > 0
-          ? responsibilities.map(r => bullet(r))
-          : [p([TR('[ Job responsibilities to be filled in by HR Manager ]', {italics:true, color:'888888'})])]),
-        divider(),
+          h('7. Notice Period & Termination:'),
+          p([TR('The applicable notice period will be:')]),
+          bullet('Up to 2 years of service: 1 month'),
+          bullet('More than 2 years and up to 4 years: 2 months'),
+          bullet('More than 4 years: 3 months'),
+          p([TR('Either party may terminate employment by giving the applicable notice period or salary in lieu.')]),
+          p([TR('The company may terminate employment without notice in case of misconduct, policy violation, or breach of confidentiality.')]),
 
-        // ── ANNEXURE C ──
-        new Paragraph({ children:[new PageBreak()], spacing:{after:0} }),
-        new Paragraph({ children:[TR('ANNEXURE – C', {bold:true, size:24})], alignment:AlignmentType.CENTER, spacing:{after:120} }),
-        new Paragraph({ children:[TR('GENERAL TERMS & CONDITIONS', {bold:true})], alignment:AlignmentType.CENTER, spacing:{after:240} }),
+          h('8. Code of Conduct:'),
+          p([TR('You are required to maintain professionalism, discipline, and respectful behaviour with colleagues, reporting managers, clients, and customers at all times.')]),
 
-        h('1. Probation Period:'),
-        p([TR('Probation: 6 months')]),
-        p([TR('Confirmation after successful performance review.')]),
+          h('9. Work Culture & Performance:'),
+          p([TR('We value employees who show initiative, creativity, dedication, and a willingness to go beyond routine tasks.')]),
+          p([TR('Exceptional performance will be rewarded through company recognition programs.')]),
 
-        h('2. Working Hours:'),
-        p([TR('09:30 AM to 6:30 PM')]),
-        p([TR('Weekly Off: Sunday, 2nd Saturday, and 4th Saturday.')]),
-        p([TR('Flexibility required during project deadlines.')]),
+          h('10. Continuous Feedback & Improvement:'),
+          p([TR('You will receive regular feedback from your Reporting Manager.')]),
+          p([TR('You are encouraged to seek clarification and provide feedback for continuous improvement.')]),
 
-        h('3. Leave Policy:'),
-        p([TR('Leave entitlement as per company leave policy. Prior approval mandatory except in emergencies.')]),
+          h('11. Salary & Reimbursements:'),
+          p([TR(`Your monthly salary will be ${salaryText}`)]),
+          p([TR('Approved official expenses (travel, calls, site visits, etc.) will be reimbursed on actuals, subject to valid bills.')]),
 
-        h('4. Confidentiality & Non-Disclosure:'),
-        p([TR('Strict confidentiality regarding company, client, and financial information must be maintained.')]),
+          h('12. Incentive Structure - Solar Power Plant (SPP):'),
+          p([TR('In addition to salary, you will be eligible for incentives as follows:')]),
+          bullet('1KW - 50KW: 2% of Invoice Value'),
+          bullet('50KW - 250KW: 1.5% of Invoice Value'),
+          bullet('250KW & above: 1% of Invoice Value'),
+          p([TR('Incentives will be shared among members involved in closing the sale.')]),
 
-        h('5. Professional Conduct:'),
-        p([TR('Employees must maintain integrity, punctuality, discipline, and respectful behaviour.')]),
+          h('13. Company Property:'),
+          p([TR('All company documents, tools, equipment, devices, or materials issued to you must be returned on your last working day.')]),
+          p([TR('Any loss or non-return may be recovered from your final settlement.')]),
 
-        h('6. Termination:'),
-        p([TR('Same notice-period rules apply. Immediate termination possible for misconduct or breach of confidentiality.')]),
+          h('14. Amendments:'),
+          p([TR('GO-SOLAR reserves the right to modify, update, or amend policies and terms of employment at any time.')]),
+          p([TR('Such updates shall be binding on all employees.')]),
+          divider(),
 
-        h('7. Company Property:'),
-        p([TR('All GO–SOLAR materials and equipment must be returned upon resignation/termination.')]),
+          new Paragraph({ children: [new PageBreak()], spacing: { after: 0 } }),
 
-        h('8. Amendments:'),
-        p([TR('Company may revise policies anytime; updated rules will apply to all employees.')]),
-        divider(), empty(),
+          ...letterhead(),
+          new Paragraph({ children: [TR('ANNEXURE - B', { bold: true, size: 24 })], alignment: AlignmentType.CENTER, spacing: { after: 160 } }),
+          new Paragraph({ children: [TR(`ROLES & RESPONSIBILITIES (${designation}):`, { bold: true })], spacing: { after: 200 } }),
 
-        new Paragraph({ children:[TR('EMPLOYEE ACCEPTANCE:', {bold:true})], spacing:{before:240, after:120} }),
-        p([TR('I hereby acknowledge that I have read, understood, and agreed to all terms and conditions of this Appointment Letter and its Annexures.')]),
-        empty(), empty(),
-        p([TR(`Name: ${sal} ${name}     Signature: __________________________`)]),
-        p([TR(`Date: ${date}     Place: Vashi, Navi Mumbai`)]),
-      ]}]
+          ...(responsibilities.length
+            ? responsibilities.map((item, index) => p([TR(`${index + 1}. ${item}`)]))
+            : [p([TR('1. Roles and responsibilities to be updated by HR.')])]),
+
+          divider(),
+
+          new Paragraph({ children: [new PageBreak()], spacing: { after: 0 } }),
+
+          ...letterhead(),
+          new Paragraph({ children: [TR('ANNEXURE - C', { bold: true, size: 24 })], alignment: AlignmentType.CENTER, spacing: { after: 160 } }),
+          new Paragraph({ children: [TR('GENERAL TERMS & CONDITIONS', { bold: true })], alignment: AlignmentType.CENTER, spacing: { after: 240 } }),
+
+          h('1. Probation Period:'),
+          bullet('Probation: 6 months'),
+          bullet('Confirmation after successful performance review.'),
+
+          h('2. Working Hours:'),
+          bullet('09:30 AM to 6:30 PM'),
+          bullet('Weekly Off: Sunday, 2nd Saturday, and 4th Saturday.'),
+          bullet('Flexibility required during project deadlines.'),
+
+          h('3. Leave Policy:'),
+          bullet('Leave entitlement as per company leave policy.'),
+          bullet('Prior approval mandatory except in emergencies.'),
+
+          h('4. Confidentiality & Non-Disclosure:'),
+          p([TR('Strict confidentiality regarding company, client, and financial information must be maintained.')]),
+
+          h('5. Professional Conduct:'),
+          p([TR('Employees must maintain integrity, punctuality, discipline, and respectful behaviour.')]),
+
+          h('6. Termination:'),
+          p([TR('Same notice-period rule applies as mentioned above.')]),
+          p([TR('Immediate termination possible for misconduct or breach of confidentiality.')]),
+
+          h('7. Company Property:'),
+          p([TR('All GO-SOLAR materials and equipment must be returned upon resignation/termination.')]),
+
+          h('8. Amendments:'),
+          p([TR('Company may revise policies anytime; updated rules will apply to all employees.')]),
+
+          empty(),
+          new Paragraph({ children: [TR('EMPLOYEE ACCEPTANCE:', { bold: true })], spacing: { before: 240, after: 120 } }),
+          p([TR(acceptanceText)]),
+          empty(),
+          p([TR(`Name: ${salutation} ${acceptanceName}               Signature: __________________________`)]),
+          empty(),
+          p([TR(`Date: ${acceptanceDate}        Place: ${acceptancePlace}`)]),
+        ],
+      }],
     })
   }
 
@@ -339,7 +392,7 @@ export default async function handler(req, res) {
 
   // Stream the docx
   const buffer = await Packer.toBuffer(doc)
-  const fname  = `${type}_letter_${emp.emp_code || 'employee'}_${Date.now()}.docx`
+  const fname  = `${type}_letter_${emp?.emp_code || 'employee'}_${Date.now()}.docx`
 
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
   res.setHeader('Content-Disposition', `attachment; filename="${fname}"`)
