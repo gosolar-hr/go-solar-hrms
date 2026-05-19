@@ -141,9 +141,13 @@ export default function AMC() {
             <option value="no_date">No Date</option>
             {techNames.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
-          <button className="btn btn-primary" onClick={() => { setShowForm(s => !s); setAlert(null) }}>
-            {showForm ? 'Cancel' : '+ Add Site'}
-          </button>
+          <a href="/inventory" style={{
+            padding:'8px 14px', borderRadius:8, border:'1px solid var(--border)',
+            background:'#fff', color:'var(--text-secondary)', fontSize:13,
+            fontWeight:600, textDecoration:'none', display:'inline-flex', alignItems:'center', gap:6
+          }}>
+            📍 Manage Sites
+          </a>
         </div>
       </div>
 
@@ -267,87 +271,18 @@ export default function AMC() {
         ))}
       </div>
 
-      {/* ── ADD SITE FORM ── */}
-      {showForm && (
-        <div className="card card-pad" style={{ marginBottom:20 }}>
-          <div className="card-title" style={{ marginBottom:20 }}>Add New Site</div>
-          <div className="form-grid">
-            <div className="form-group">
-              <label>Site Name *</label>
-              <input name="client_name" placeholder="e.g. GOLDSTAR" value={form.client_name} onChange={onChange} />
-            </div>
-            <div className="form-group">
-              <label>Site Type *</label>
-              <select name="site_type" value={form.site_type} onChange={onChange}>
-                <option value="residential">Residential</option>
-                <option value="commercial">Commercial</option>
-                <option value="industrial">Industrial</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>System Size (kW)</label>
-              <input name="system_size_kw" type="number" placeholder="e.g. 50" value={form.system_size_kw} onChange={onChange} />
-            </div>
-            <div className="form-group">
-              <label>AMC Valid Upto</label>
-              <input name="amc_valid_upto" type="date" value={form.amc_valid_upto} onChange={onChange} />
-            </div>
-            <div className="form-group">
-              <label>Contact Person</label>
-              <input name="contact_name" placeholder="Name" value={form.contact_name} onChange={onChange} />
-            </div>
-            <div className="form-group">
-              <label>Contact Phone</label>
-              <input name="contact_phone" placeholder="9876543210" value={form.contact_phone} onChange={onChange} />
-            </div>
-
-            {/* Assign To Employee */}
-            <div className="form-group full">
-              <label>Assign To Technician</label>
-              <select name="assigned_to_emp_code" value={form.assigned_to_emp_code} onChange={onChange}>
-                <option value="">Select employee...</option>
-                {employees
-                  .filter(e => e.is_active !== false)
-                  .map(e => (
-                    <option key={e.id} value={e.emp_code}>
-                      {e.emp_code} — {e.name} ({e.department})
-                    </option>
-                  ))}
-              </select>
-              <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:3 }}>
-                All active employees shown — new joiners appear automatically
-              </div>
-            </div>
-
-            {/* Recurring Service Days */}
-            <div className="form-group">
-              <label>Service Day 1 (of month)</label>
-              <select name="service_day_1" value={form.service_day_1} onChange={onChange}>
-                <option value="">Not set</option>
-                {DAYS.map(d => <option key={d} value={d}>{d}th of every month</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Service Day 2 (of month)</label>
-              <select name="service_day_2" value={form.service_day_2} onChange={onChange}>
-                <option value="">Not set</option>
-                {DAYS.map(d => <option key={d} value={d}>{d}th of every month</option>)}
-              </select>
-            </div>
-            <div className="form-group full">
-              <label>Notes</label>
-              <input name="notes" placeholder="Any additional info" value={form.notes} onChange={onChange} />
-            </div>
-          </div>
-          <div className="divider" />
-          <div className="flex gap-8">
-            <button className="btn btn-primary" onClick={onSubmit} disabled={saving}>
-              {saving ? 'Saving...' : 'Save Site'}
-            </button>
-            <button className="btn btn-outline" onClick={() => setShowForm(false)}>Cancel</button>
-          </div>
+      {/* ── INFO BANNER: Sites managed from Inventory ── */}
+      <div style={{ background:'#EFF8FF', border:'1px solid #B2DDFF', borderRadius:10,
+        padding:'12px 18px', marginBottom:20, fontSize:13, color:'#1849A9',
+        display:'flex', alignItems:'center', gap:12 }}>
+        <span style={{ fontSize:18 }}>📍</span>
+        <div>
+          <strong>Sites are managed from Inventory.</strong>
+          {' '}Create or update sites in the{' '}
+          <a href="/inventory" style={{ color:'var(--accent)', fontWeight:600 }}>Inventory module</a>
+          {' '}→ Sites tab. Once created, they appear here automatically for AMC configuration.
         </div>
-      )}
+      </div>
 
       {/* ── SITES TABLE ── */}
       <div className="card">

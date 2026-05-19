@@ -9,15 +9,23 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     const today = new Date().toISOString().split('T')[0]
 
-    const { data, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('amc_sites')
       .select('*, amc_visits(id, scheduled_date, status)')
       .eq('is_active', true)
       .order('client_name')
 
+    // AMC module only shows active AMC sites by default
+    // Pass ?all=true to show all including pre_amc
+    if (!req.query.all) {
+      query = query.in('project_status', ['active', 'pre_amc'])
+    }
+
+    const { data, error } = await query
+
     if (error) return res.status(500).json({ error: error.message })
 
-    const enriched = data.map(site => {
+    const enriched = (data || []).map(site => {
       const validUpto   = site.amc_valid_upto ? new Date(site.amc_valid_upto) : null
       const todayDate   = new Date(today)
       const daysLeft    = validUpto

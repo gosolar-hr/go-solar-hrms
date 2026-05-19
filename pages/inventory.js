@@ -30,7 +30,13 @@ const MOV_TYPES = [
 
 const EMPTY_ITEM = { item_name:'', category:'solar_pv_modules', unit:'pcs', reorder_level:'', description:'', opening_stock:'' }
 const EMPTY_MOV  = { movement_type:'outward', site_id:'', reference:'', remarks:'', movement_date: new Date().toISOString().split('T')[0] }
-const EMPTY_LINE = { item_id:'', quantity:'' }
+const EMPTY_LINE      = { item_id:'', quantity:'' }
+const EMPTY_SITE_FORM = {
+  client_name:'', site_type:'commercial', address:'', city:'',
+  system_size_kw:'', sanctioned_load_kw:'', installation_date:'',
+  contact_name:'', contact_phone:'',
+  assigned_to_emp_code:'', assigned_to_name:'', notes:'',
+}
 
 export default function Inventory() {
   const [items,      setItems]      = useState([])
@@ -43,10 +49,12 @@ export default function Inventory() {
   const [activeTab,  setActiveTab]  = useState('stock')
   const [showAddItem, setShowAddItem] = useState(false)
   const [showMovForm, setShowMovForm] = useState(false)
+  const [showAddSite, setShowAddSite] = useState(false)
   const [saving,     setSaving]     = useState(false)
   const [itemForm,   setItemForm]   = useState(EMPTY_ITEM)
   const [movForm,    setMovForm]    = useState(EMPTY_MOV)
   const [dispatchLines, setDispatchLines] = useState([{ ...EMPTY_LINE }])
+  const [siteForm,   setSiteForm]   = useState(EMPTY_SITE_FORM)
   const [search,     setSearch]     = useState('')
   const [catFilter,  setCatFilter]  = useState('all')
   const [editItem,   setEditItem]   = useState(null)
@@ -57,7 +65,7 @@ export default function Inventory() {
     Promise.all([
       fetch('/api/inventory/items').then(r => r.json()),
       fetch('/api/inventory/movements?limit=50').then(r => r.json()),
-      fetch('/api/amc/sites').then(r => r.json()),
+      fetch('/api/inventory/sites').then(r => r.json()),
       fetch('/api/employees').then(r => r.json()),
     ]).then(([itemsData, movsData, sitesData, empsData]) => {
       const itemsList = Array.isArray(itemsData) ? itemsData : []
@@ -176,6 +184,48 @@ export default function Inventory() {
     load()
   }
 
+  const saveSite = async () => {
+    if (!siteForm.client_name) return setAlert({ type:'error', msg:'Site/Client name is required' })
+    setSaving(true)
+    const res = await fetch('/api/inventory/sites', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        ...siteForm,
+        system_size_kw    : siteForm.system_size_kw     ? Number(siteForm.system_size_kw)     : null,
+        sanctioned_load_kw: siteForm.sanctioned_load_kw ? Number(siteForm.sanctioned_load_kw) : null,
+      })
+    })
+    const data = await res.json()
+    setSaving(false)
+    if (!res.ok) return setAlert({ type:'error', msg: data.error })
+    setAlert({ type:'success', msg:`Site "${data.client_name}" created. You can now dispatch stock to it.` })
+    setSiteForm(EMPTY_SITE_FORM)
+    setShowAddSite(false)
+    load()
+  }
+
+  const onSiteFormChange = e => {
+    const { name, value } = e.target
+    if (name === 'assigned_to_emp_code') {
+      const emp = employees.find(em => em.emp_code === value || em.id === value)
+      setSiteForm(f => ({ ...f, assigned_to_emp_code: emp?.emp_code || value, assigned_to_name: emp?.name || '' }))
+    } else {
+      setSiteForm(f => ({ ...f, [name]: value }))
+    }
+  }
+
+  const SITE_TYPE_CONFIG = {
+    residential : { label:'Residential', color:'#2E90FA' },
+    commercial  : { label:'Commercial',  color:'#F79009' },
+    industrial  : { label:'Industrial',  color:'#7F56D9' },
+  }
+
+  const STATUS_CONFIG = {
+    pre_amc  : { label:'Pre-AMC',   color:'#B54708', bg:'#FFFAEB', border:'#FEF0C7' },
+    active   : { label:'AMC Active', color:'#027A48', bg:'#ECFDF3', border:'#A9EFC5' },
+    inactive : { label:'Inactive',   color:'#667085', bg:'#F8F9FB', border:'#E4E7EC' },
+  }
+
   const getCatConfig = (cat) => CATEGORIES.find(c => c.value === cat) || CATEGORIES[6]
   const fmt = (d) => d ? new Date(d).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'}) : '—'
 
@@ -199,10 +249,13 @@ export default function Inventory() {
           <p className="page-sub">Material tracking — Head Office & Site level</p>
         </div>
         <div className="flex gap-8 items-center">
-          <button className="btn btn-outline" onClick={() => { setShowMovForm(s=>!s); setShowAddItem(false); setAlert(null) }}>
+          <button className="btn btn-outline" onClick={() => { setShowMovForm(s=>!s); setShowAddItem(false); setShowAddSite(false); setAlert(null) }}>
             ⇄ Material Dispatch
           </button>
-          <button className="btn btn-primary" onClick={() => { setShowAddItem(s=>!s); setShowMovForm(false); setAlert(null) }}>
+          <button className="btn btn-outline" onClick={() => { setShowAddSite(s=>!s); setShowAddItem(false); setShowMovForm(false); setAlert(null) }}>
+            📍 Add Site
+          </button>
+          <button className="btn btn-primary" onClick={() => { setShowAddItem(s=>!s); setShowMovForm(false); setShowAddSite(false); setAlert(null) }}>
             + Add Item
           </button>
         </div>
@@ -272,6 +325,76 @@ export default function Inventory() {
           <div className="flex gap-8">
             <button className="btn btn-primary" onClick={saveItem} disabled={saving}>{saving?'Saving...':'Add Item'}</button>
             <button className="btn btn-outline" onClick={() => setShowAddItem(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Add Site Form */}
+      {showAddSite && (
+        <div className="card card-pad" style={{ marginBottom:20 }}>
+          <div className="card-title" style={{ marginBottom:4 }}>Add New Site / Project</div>
+          <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:20 }}>
+            Sites created here are available for stock dispatch immediately. AMC details are added later in the O&M module once the deal is finalised.
+          </div>
+          <div className="form-grid">
+            <div className="form-group">
+              <label>Site / Client Name *</label>
+              <input name="client_name" placeholder="e.g. Tata Motors Pune Plant" value={siteForm.client_name} onChange={onSiteFormChange} />
+            </div>
+            <div className="form-group">
+              <label>Site Type</label>
+              <select name="site_type" value={siteForm.site_type} onChange={onSiteFormChange}>
+                <option value="residential">Residential</option>
+                <option value="commercial">Commercial</option>
+                <option value="industrial">Industrial</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>System Size (kW)</label>
+              <input name="system_size_kw" type="number" placeholder="e.g. 100" value={siteForm.system_size_kw} onChange={onSiteFormChange} />
+            </div>
+            <div className="form-group">
+              <label>Sanctioned Load (kW)</label>
+              <input name="sanctioned_load_kw" type="number" placeholder="e.g. 120" value={siteForm.sanctioned_load_kw} onChange={onSiteFormChange} />
+            </div>
+            <div className="form-group">
+              <label>Installation Date</label>
+              <input name="installation_date" type="date" value={siteForm.installation_date} onChange={onSiteFormChange} />
+            </div>
+            <div className="form-group">
+              <label>City</label>
+              <input name="city" placeholder="e.g. Pune" value={siteForm.city} onChange={onSiteFormChange} />
+            </div>
+            <div className="form-group full">
+              <label>Address</label>
+              <input name="address" placeholder="Full site address" value={siteForm.address} onChange={onSiteFormChange} />
+            </div>
+            <div className="form-group">
+              <label>Contact Person</label>
+              <input name="contact_name" placeholder="Name" value={siteForm.contact_name} onChange={onSiteFormChange} />
+            </div>
+            <div className="form-group">
+              <label>Contact Phone</label>
+              <input name="contact_phone" placeholder="9876543210" value={siteForm.contact_phone} onChange={onSiteFormChange} />
+            </div>
+            <div className="form-group full">
+              <label>Assign Technician</label>
+              <select name="assigned_to_emp_code" value={siteForm.assigned_to_emp_code} onChange={onSiteFormChange}>
+                <option value="">Select employee...</option>
+                {employees.filter(e => e.is_active !== false).map(e => (
+                  <option key={e.id} value={e.emp_code}>{e.emp_code} — {e.name} ({e.department})</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group full">
+              <label>Notes</label>
+              <input name="notes" placeholder="Any project notes" value={siteForm.notes} onChange={onSiteFormChange} />
+            </div>
+          </div>
+          <div className="divider" />
+          <div className="flex gap-8">
+            <button className="btn btn-primary" onClick={saveSite} disabled={saving}>{saving?'Saving...':'Create Site'}</button>
+            <button className="btn btn-outline" onClick={() => setShowAddSite(false)}>Cancel</button>
           </div>
         </div>
       )}
@@ -427,7 +550,8 @@ export default function Inventory() {
         {[
           { key:'stock',     label:`Stock Overview (${items.length})` },
           { key:'movements', label:`Movement History (${movements.length})` },
-          { key:'sites',     label:'Site-wise Stock' },
+          { key:'sites',     label:`Sites (${sites.length})` },
+          { key:'site_stock',label:'Site-wise Stock' },
         ].map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
             padding:'8px 18px', borderRadius:8, border:'1px solid var(--border)',
@@ -697,8 +821,87 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* ── SITE-WISE STOCK TAB ── */}
+      {/* ── SITES MASTER TAB ── */}
       {activeTab === 'sites' && (
+        <div className="card" style={{ padding:0, overflow:'hidden' }}>
+          <div className="card-header" style={{ padding:'14px 20px' }}>
+            <span className="card-title">Site / Project Master</span>
+            <button className="btn btn-primary btn-sm"
+              onClick={() => { setShowAddSite(true); setActiveTab('stock') }}>
+              + Add Site
+            </button>
+          </div>
+          {sites.length === 0 ? (
+            <div className="empty-state">
+              <strong>No sites yet</strong>
+              <p>Add your first site/project using "📍 Add Site" to start dispatching stock.</p>
+            </div>
+          ) : (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Site / Client</th>
+                    <th>Type</th>
+                    <th>Capacity (kW)</th>
+                    <th>City</th>
+                    <th>Contact</th>
+                    <th>Assigned To</th>
+                    <th>Status</th>
+                    <th>AMC Valid Upto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sites.map(site => {
+                    const tc  = SITE_TYPE_CONFIG[site.site_type] || SITE_TYPE_CONFIG.commercial
+                    const sc  = STATUS_CONFIG[site.project_status] || STATUS_CONFIG.pre_amc
+                    return (
+                      <tr key={site.id}>
+                        <td>
+                          <div style={{ fontWeight:600, fontSize:13 }}>{site.client_name}</div>
+                          {site.address && <div style={{ fontSize:11, color:'var(--text-muted)' }}>{site.address}</div>}
+                        </td>
+                        <td>
+                          <span style={{ background:`${tc.color}18`, color:tc.color,
+                            border:`1px solid ${tc.color}35`, padding:'2px 8px',
+                            borderRadius:20, fontSize:11, fontWeight:600 }}>
+                            {tc.label}
+                          </span>
+                        </td>
+                        <td style={{ fontFamily:'DM Mono,monospace', fontSize:13 }}>
+                          {site.system_size_kw ? `${site.system_size_kw} kW` : '—'}
+                        </td>
+                        <td style={{ fontSize:13 }}>{site.city || '—'}</td>
+                        <td style={{ fontSize:12 }}>
+                          {site.contact_name && <div>{site.contact_name}</div>}
+                          {site.contact_phone && <div style={{ color:'var(--text-muted)' }}>{site.contact_phone}</div>}
+                          {!site.contact_name && '—'}
+                        </td>
+                        <td style={{ fontSize:12 }}>{site.assigned_to_name || '—'}</td>
+                        <td>
+                          <span style={{ background:sc.bg, color:sc.color,
+                            border:`1px solid ${sc.border}`, padding:'2px 10px',
+                            borderRadius:20, fontSize:11, fontWeight:600 }}>
+                            {sc.label}
+                          </span>
+                        </td>
+                        <td style={{ fontSize:12, color:'var(--text-muted)' }}>
+                          {site.amc_valid_upto
+                            ? new Date(site.amc_valid_upto).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'})
+                            : <span style={{ color:'#98A2B3', fontStyle:'italic' }}>Not set (Pre-AMC)</span>}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── SITE-WISE STOCK TAB ── */}
+      {activeTab === 'site_stock' && (
         <div>
           {(() => {
             // Build site stock map from items
