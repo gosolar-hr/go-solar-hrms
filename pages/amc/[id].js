@@ -132,6 +132,25 @@ export default function SiteDetail() {
   useEffect(() => { load() }, [id])
 
   const saveDetails = async () => {
+    // Contact name — alphabetical only
+    if (editForm.contact_name && !/^[A-Za-z\s.\-']+$/.test(editForm.contact_name.trim())) {
+      return setAlert({ type:'error', msg:'Contact name should contain letters only — no numbers or special characters.' })
+    }
+
+    // Contact phone — must start with 91, exactly 12 digits
+    if (editForm.contact_phone) {
+      const phone = editForm.contact_phone.replace(/\s/g, '')
+      if (!/^\d+$/.test(phone)) {
+        return setAlert({ type:'error', msg:'Contact phone must contain numbers only.' })
+      }
+      if (!phone.startsWith('91')) {
+        return setAlert({ type:'error', msg:'Contact phone must start with 91 (e.g. 919876543210).' })
+      }
+      if (phone.length !== 12) {
+        return setAlert({ type:'error', msg:'Contact phone must be 12 digits starting with 91 (91 + 10-digit number).' })
+      }
+    }
+
     setSaving(true)
     const res = await fetch('/api/amc/sites', {
       method:'PUT', headers:{'Content-Type':'application/json'},
