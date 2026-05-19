@@ -237,7 +237,7 @@ export default function Employees() {
                   <th>Monthly Gross</th>
                   <th>PF</th>
                   <th>ESIC</th>
-                  <th style={{ width:80 }}></th>
+                  <th>Pension</th>
                 </tr>
               </thead>
               <tbody>
@@ -247,10 +247,16 @@ export default function Employees() {
                       <span className="badge badge-gray">{e.emp_code || '—'}</span>
                     </td>
                     <td>
-                      <div style={{ fontWeight:500 }}>{e.name}</div>
-                      <div style={{ fontSize:11, color:'var(--text-muted)' }}>
-                        {e.designation || e.email}
-                      </div>
+                      <Link href={`/employees/${e.id}`}
+                        style={{ textDecoration:'none', color:'inherit' }}>
+                        <div style={{ fontWeight:600, color:'var(--accent)',
+                          cursor:'pointer' }}>
+                          {e.name}
+                        </div>
+                        <div style={{ fontSize:11, color:'var(--text-muted)' }}>
+                          {e.designation || e.email}
+                        </div>
+                      </Link>
                     </td>
                     <td>
                       <span className="badge badge-gray">{e.department || '—'}</span>
@@ -270,8 +276,7 @@ export default function Employees() {
                       )}
                     </td>
                     <td>
-                      <span className={`badge ${e.pf_applicable
-                        ? 'badge-green' : 'badge-red'}`}>
+                      <span className={`badge ${e.pf_applicable ? 'badge-green' : 'badge-red'}`}>
                         {e.pf_applicable ? 'Yes' : 'No'}
                       </span>
                     </td>
@@ -281,21 +286,9 @@ export default function Employees() {
                       </span>
                     </td>
                     <td>
-                      <Link
-                        href={`/employees/${e.id}`}
-                        style={{
-                          fontSize      : 12,
-                          fontWeight    : 600,
-                          color         : 'var(--accent)',
-                          textDecoration: 'none',
-                          padding       : '4px 10px',
-                          border        : '1px solid var(--border)',
-                          borderRadius  : 6,
-                          whiteSpace    : 'nowrap',
-                        }}
-                      >
-                        View →
-                      </Link>
+                      <span className={`badge ${e.pension_applicable ? 'badge-green' : 'badge-red'}`}>
+                        {e.pension_applicable ? 'Yes' : 'No'}
+                      </span>
                     </td>
                   </tr>
                 ))}
