@@ -330,6 +330,43 @@ export default function EmployeeProfile() {
                       Controls which days are treated as Week Off for this employee
                     </div>
                   </div>
+                  <div className="form-group">
+                    <label>Date of Birth</label>
+                    <input name="date_of_birth" type="date"
+                      value={form.date_of_birth?.split('T')[0]||''} onChange={onChange} />
+                  </div>
+                  <div className="form-group">
+                    <label>Marital Status</label>
+                    <select name="marital_status" value={form.marital_status||''} onChange={onChange}>
+                      <option value="">Select</option>
+                      <option value="Married">Married</option>
+                      <option value="Unmarried">Unmarried</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Father / Husband Name</label>
+                    <input name="father_husband_name" value={form.father_husband_name||''} onChange={onChange} />
+                  </div>
+                  <div className="form-group">
+                    <label>Working Location</label>
+                    <input name="working_location" value={form.working_location||''} onChange={onChange} placeholder="e.g. Navi Mumbai" />
+                  </div>
+                  <div className="form-group">
+                    <label>Biometric Code</label>
+                    <input name="biometric_code" value={form.biometric_code||''} onChange={onChange} />
+                  </div>
+                  <div className="form-group full">
+                    <label>Current Address</label>
+                    <textarea name="current_address" rows={2}
+                      value={form.current_address||''} onChange={onChange}
+                      placeholder="Full current residential address" />
+                  </div>
+                  <div className="form-group full">
+                    <label>Permanent Address</label>
+                    <textarea name="permanent_address" rows={2}
+                      value={form.permanent_address||''} onChange={onChange}
+                      placeholder="Permanent / native address" />
+                  </div>
                 </div>
                 <div className="flex gap-8 mt-16">
                   <button className="btn btn-primary btn-sm"
@@ -358,14 +395,21 @@ export default function EmployeeProfile() {
                 <FieldRow label="Gender"
                   value={emp.gender === 'female' ? 'Female'
                        : emp.gender === 'other'  ? 'Other' : 'Male'} />
-                <FieldRow
-                  label="Work Schedule"
+                <FieldRow label="Work Schedule"
                   value={
                     emp.work_schedule === '6day' ? '6 Days — Mon to Sat (no Sat offs)' :
                     emp.work_schedule === '7day' ? '7 Days — All days (no week offs)' :
                     'Standard — Mon–Sat, 2nd & 4th Sat off'
                   }
                 />
+                {emp.date_of_birth && <FieldRow label="Date of Birth"
+                  value={new Date(emp.date_of_birth).toLocaleDateString('en-IN', {day:'2-digit',month:'long',year:'numeric'})} />}
+                {emp.marital_status && <FieldRow label="Marital Status" value={emp.marital_status} />}
+                {emp.father_husband_name && <FieldRow label="Father / Husband" value={emp.father_husband_name} />}
+                {emp.working_location && <FieldRow label="Working Location" value={emp.working_location} />}
+                {emp.biometric_code && <FieldRow label="Biometric Code" value={emp.biometric_code} />}
+                {emp.current_address && <FieldRow label="Current Address" value={emp.current_address} />}
+                {emp.permanent_address && <FieldRow label="Permanent Address" value={emp.permanent_address} />}
                 <button className="btn btn-outline btn-sm mt-16"
                   onClick={() => setEditing('personal')}>
                   ✏ Edit Personal Details
@@ -382,6 +426,11 @@ export default function EmployeeProfile() {
                     <label>Bank Account Number</label>
                     <input name="bank_account" value={form.bank_account||''}
                       onChange={onChange} placeholder="e.g. 50100XXXXXXXX" />
+                  </div>
+                  <div className="form-group full">
+                    <label>Account Holder Name (as per bank)</label>
+                    <input name="bank_account_name" value={form.bank_account_name||''}
+                      onChange={onChange} placeholder="Name as printed on passbook" />
                   </div>
                   <div className="form-group">
                     <label>IFSC Code</label>
@@ -413,12 +462,187 @@ export default function EmployeeProfile() {
             ) : (
               <>
                 <FieldRow label="Bank Account" value={emp.bank_account} highlight />
+                {emp.bank_account_name && <FieldRow label="Account Name" value={emp.bank_account_name} />}
                 <FieldRow label="IFSC Code"    value={emp.ifsc_code}    highlight />
                 <FieldRow label="Branch Name"  value={emp.bank_branch} />
                 <FieldRow label="Place"        value={emp.bank_location} />
                 <button className="btn btn-outline btn-sm mt-16"
                   onClick={() => setEditing('bank')}>
                   ✏ Edit Bank Details
+                </button>
+              </>
+            )}
+          </Section>
+
+          {/* ── PREVIOUS EMPLOYER ── */}
+          <Section title="Previous Employer / PF Details">
+            {editing === 'prev_employer' ? (
+              <>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label>Previous UAN Number</label>
+                    <input name="prev_uan_number" value={form.prev_uan_number||''} onChange={onChange} />
+                  </div>
+                  <div className="form-group">
+                    <label>Previous PF A/C Number</label>
+                    <input name="prev_pf_number" value={form.prev_pf_number||''} onChange={onChange}
+                      placeholder="e.g. MH/BAN/12345/000/0001" />
+                  </div>
+                  <div className="form-group">
+                    <label>Previous Pension Member</label>
+                    <select name="prev_pension_member" value={form.prev_pension_member||''} onChange={onChange}>
+                      <option value="">Not applicable</option>
+                      <option value="YES">YES</option>
+                      <option value="NO">NO</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>PF Transfer / Withdraw</label>
+                    <select name="prev_pf_action" value={form.prev_pf_action||''} onChange={onChange}>
+                      <option value="">Not applicable</option>
+                      <option value="TRANSFER">Transfer</option>
+                      <option value="WITHDRAW">Withdraw</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Previous ESIC Number</label>
+                    <input name="prev_esic_number" value={form.prev_esic_number||''} onChange={onChange} />
+                  </div>
+                  <div className="form-group">
+                    <label>PF Basic Limit (₹)</label>
+                    <input name="pf_basic_limit" type="number" value={form.pf_basic_limit||15000} onChange={onChange} />
+                  </div>
+                </div>
+                <div className="flex gap-8 mt-16">
+                  <button className="btn btn-primary btn-sm" onClick={() => onSave('Previous employer details')} disabled={saving}>
+                    {saving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                  <button className="btn btn-outline btn-sm" onClick={() => { setEditing(null); setForm(emp) }}>Cancel</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <FieldRow label="Previous UAN"         value={emp.prev_uan_number} />
+                <FieldRow label="Previous PF A/C"      value={emp.prev_pf_number} />
+                <FieldRow label="Pension Member"       value={emp.prev_pension_member} />
+                <FieldRow label="PF Transfer/Withdraw" value={emp.prev_pf_action} />
+                <FieldRow label="Previous ESIC No."    value={emp.prev_esic_number} />
+                <FieldRow label="PF Basic Limit"       value={emp.pf_basic_limit ? `₹${emp.pf_basic_limit?.toLocaleString('en-IN')}` : null} />
+                <button className="btn btn-outline btn-sm mt-16" onClick={() => setEditing('prev_employer')}>
+                  ✏ Edit Previous Employer Details
+                </button>
+              </>
+            )}
+          </Section>
+
+          {/* ── NOMINEE ── */}
+          <Section title="Nominee Details">
+            {editing === 'nominee' ? (
+              <>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label>Nominee Name (as per Aadhaar)</label>
+                    <input name="nominee_name" value={form.nominee_name||''} onChange={onChange} />
+                  </div>
+                  <div className="form-group">
+                    <label>Relation with Nominee</label>
+                    <select name="nominee_relation" value={form.nominee_relation||''} onChange={onChange}>
+                      <option value="">Select</option>
+                      <option value="Spouse">Spouse</option>
+                      <option value="Father">Father</option>
+                      <option value="Mother">Mother</option>
+                      <option value="Son">Son</option>
+                      <option value="Daughter">Daughter</option>
+                      <option value="Brother">Brother</option>
+                      <option value="Sister">Sister</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Nominee Phone</label>
+                    <input name="nominee_phone" value={form.nominee_phone||''} onChange={onChange} />
+                  </div>
+                  <div className="form-group">
+                    <label>Nominee Aadhaar Number</label>
+                    <input name="nominee_aadhaar" value={form.nominee_aadhaar||''} onChange={onChange} />
+                  </div>
+                  <div className="form-group">
+                    <label>Nominee PAN Number</label>
+                    <input name="nominee_pan" value={form.nominee_pan||''} onChange={onChange} />
+                  </div>
+                  <div className="form-group full">
+                    <label>Nominee Current Address</label>
+                    <textarea name="nominee_current_address" rows={2}
+                      value={form.nominee_current_address||''} onChange={onChange} />
+                  </div>
+                  <div className="form-group full">
+                    <label>Nominee Permanent Address</label>
+                    <textarea name="nominee_permanent_address" rows={2}
+                      value={form.nominee_permanent_address||''} onChange={onChange} />
+                  </div>
+                </div>
+                <div className="flex gap-8 mt-16">
+                  <button className="btn btn-primary btn-sm" onClick={() => onSave('Nominee details')} disabled={saving}>
+                    {saving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                  <button className="btn btn-outline btn-sm" onClick={() => { setEditing(null); setForm(emp) }}>Cancel</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <FieldRow label="Nominee Name"       value={emp.nominee_name} />
+                <FieldRow label="Relation"           value={emp.nominee_relation} />
+                <FieldRow label="Nominee Phone"      value={emp.nominee_phone} />
+                <FieldRow label="Nominee Aadhaar"    value={emp.nominee_aadhaar} highlight />
+                <FieldRow label="Nominee PAN"        value={emp.nominee_pan} highlight />
+                <FieldRow label="Current Address"    value={emp.nominee_current_address} />
+                <FieldRow label="Permanent Address"  value={emp.nominee_permanent_address} />
+                <button className="btn btn-outline btn-sm mt-16" onClick={() => setEditing('nominee')}>
+                  ✏ Edit Nominee Details
+                </button>
+              </>
+            )}
+          </Section>
+
+          {/* ── HR ADMIN NOTES ── */}
+          <Section title="HR Admin">
+            {editing === 'hr_admin' ? (
+              <>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label>Current In-Hand Salary (₹)</label>
+                    <input name="current_inhand_salary" type="number"
+                      value={form.current_inhand_salary||''} onChange={onChange}
+                      placeholder="Actual take-home amount" />
+                  </div>
+                  <div className="form-group">
+                    <label>Aadhaar Name (as per card)</label>
+                    <input name="aadhaar_name" value={form.aadhaar_name||''} onChange={onChange} />
+                  </div>
+                  <div className="form-group full">
+                    <label>HR Remark</label>
+                    <textarea name="hr_remark" rows={2}
+                      value={form.hr_remark||''} onChange={onChange}
+                      placeholder="Any internal HR notes..." />
+                  </div>
+                </div>
+                <div className="flex gap-8 mt-16">
+                  <button className="btn btn-primary btn-sm" onClick={() => onSave('HR admin details')} disabled={saving}>
+                    {saving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                  <button className="btn btn-outline btn-sm" onClick={() => { setEditing(null); setForm(emp) }}>Cancel</button>
+                </div>
+              </>
+            ) : (
+              <>
+                {emp.current_inhand_salary && <FieldRow label="In-Hand Salary" value={`₹${Number(emp.current_inhand_salary).toLocaleString('en-IN')}`} highlight />}
+                {emp.aadhaar_name && <FieldRow label="Aadhaar Name" value={emp.aadhaar_name} />}
+                {emp.hr_remark && <FieldRow label="HR Remark" value={emp.hr_remark} />}
+                {!emp.current_inhand_salary && !emp.aadhaar_name && !emp.hr_remark && (
+                  <div style={{ fontSize:12, color:'var(--text-muted)', padding:'8px 0' }}>No HR admin notes yet.</div>
+                )}
+                <button className="btn btn-outline btn-sm mt-16" onClick={() => setEditing('hr_admin')}>
+                  ✏ Edit HR Admin Details
                 </button>
               </>
             )}
