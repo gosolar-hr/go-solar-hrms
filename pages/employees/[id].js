@@ -267,14 +267,11 @@ export default function EmployeeProfile() {
         </div>
       </div>
 
-      {/* Two column layout */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
+      {/* ── Structured layout ── */}
 
-        {/* LEFT COLUMN */}
-        <div>
-          {/* Personal Details */}
-          <Section title="Personal Details">
-            {editing === 'personal' ? (
+      {/* Row 1 — Personal Details (full width, most fields) */}
+      <Section title="Personal Details">
+        {editing === 'personal' ? (
               <>
                 <div className="form-grid">
                   <div className="form-group">
@@ -420,63 +417,125 @@ export default function EmployeeProfile() {
             )}
           </Section>
 
-          <Section title="Bank Details">
-            {editing === 'bank' ? (
-              <>
-                <div className="form-grid">
-                  <div className="form-group full">
-                    <label>Bank Account Number</label>
-                    <input name="bank_account" value={form.bank_account||''}
-                      onChange={onChange} placeholder="e.g. 50100XXXXXXXX" />
-                  </div>
-                  <div className="form-group full">
-                    <label>Account Holder Name (as per bank)</label>
-                    <input name="bank_account_name" value={form.bank_account_name||''}
-                      onChange={onChange} placeholder="Name as printed on passbook" />
-                  </div>
-                  <div className="form-group">
-                    <label>IFSC Code</label>
-                    <input name="ifsc_code" value={form.ifsc_code||''}
-                      onChange={onChange} placeholder="HDFC0001234" />
-                  </div>
-                  <div className="form-group">
-                    <label>Branch Name</label>
-                    <input name="bank_branch" value={form.bank_branch||''}
-                      onChange={onChange} placeholder="Main Branch" />
-                  </div>
-                  <div className="form-group full">
-                    <label>Place / Location</label>
-                    <input name="bank_location" value={form.bank_location||''}
-                      onChange={onChange} placeholder="Mumbai" />
+      {/* ── Row 2: Salary + Compliance side by side ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
+        <Section title="Salary Components">
+          {editing === 'salary' ? (
+            <>
+              <div style={{ background:'#FFF4ED', border:'1px solid #FED7AA',
+                borderRadius:8, padding:'10px 14px', marginBottom:16,
+                fontSize:12, color:'#EA6A05' }}>
+                ⚠ Salary changes will apply from the next payroll run. Re-run payroll after saving.
+              </div>
+              <div className="form-grid">
+                <div className="form-group"><label>Basic Salary (₹) *</label><input name="basic_salary" type="number" value={form.basic_salary||''} onChange={onChange} /></div>
+                <div className="form-group"><label>HRA (₹)</label><input name="hra" type="number" value={form.hra||''} onChange={onChange} /></div>
+                <div className="form-group"><label>CCA (₹)</label><input name="cca" type="number" value={form.cca||''} onChange={onChange} /></div>
+                <div className="form-group"><label>Conveyance (₹)</label><input name="conveyance" type="number" value={form.conveyance||''} onChange={onChange} /></div>
+                <div className="form-group full"><label>Other Allowances (₹)</label><input name="allowances" type="number" value={form.allowances||''} onChange={onChange} /></div>
+                <div className="form-group full">
+                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                    <input type="checkbox" name="pf_applicable" id="pf_applicable" checked={form.pf_applicable ?? true} onChange={onChange} style={{ width:16, height:16, accentColor:'var(--accent)' }} />
+                    <label htmlFor="pf_applicable" style={{ margin:0, cursor:'pointer', fontSize:13, fontWeight:500 }}>PF Applicable (uncheck if Form 11 opt-out)</label>
                   </div>
                 </div>
-                <div className="flex gap-8 mt-16">
-                  <button className="btn btn-primary btn-sm"
-                    onClick={() => onSave('Bank details')} disabled={saving}>
-                    {saving ? 'Saving...' : 'Save Changes'}
-                  </button>
-                  <button className="btn btn-outline btn-sm"
-                    onClick={() => { setEditing(null); setForm(emp) }}>
-                    Cancel
-                  </button>
+                <div className="form-group full">
+                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                    <input type="checkbox" name="esic_applicable" id="esic_applicable" checked={form.esic_applicable ?? true} onChange={onChange} style={{ width:16, height:16, accentColor:'var(--accent)' }} />
+                    <label htmlFor="esic_applicable" style={{ margin:0, cursor:'pointer', fontSize:13, fontWeight:500 }}>ESIC Applicable (uncheck to opt-out)</label>
+                  </div>
                 </div>
-              </>
-            ) : (
-              <>
-                <FieldRow label="Bank Account" value={emp.bank_account} highlight />
-                {emp.bank_account_name && <FieldRow label="Account Name" value={emp.bank_account_name} />}
-                <FieldRow label="IFSC Code"    value={emp.ifsc_code}    highlight />
-                <FieldRow label="Branch Name"  value={emp.bank_branch} />
-                <FieldRow label="Place"        value={emp.bank_location} />
-                <button className="btn btn-outline btn-sm mt-16"
-                  onClick={() => setEditing('bank')}>
-                  ✏ Edit Bank Details
-                </button>
-              </>
-            )}
-          </Section>
+                <div className="form-group full">
+                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                    <input type="checkbox" name="pension_applicable" id="pension_applicable" checked={form.pension_applicable ?? false} onChange={onChange} style={{ width:16, height:16, accentColor:'var(--accent)' }} />
+                    <label htmlFor="pension_applicable" style={{ margin:0, cursor:'pointer', fontSize:13, fontWeight:500 }}>Pension Applicable — EPS (8.33% of Basic, max ₹1,250/month)</label>
+                  </div>
+                </div>
+              </div>
+              <div style={{ background:'#F8F9FB', border:'1px solid #E4E7EC', borderRadius:8, padding:'12px 16px', marginTop:12 }}>
+                <div style={{ fontSize:11, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em' }}>New Monthly Gross Preview</div>
+                <div style={{ fontSize:22, fontWeight:700, color:'var(--accent)', fontFamily:'DM Mono, monospace', marginTop:4 }}>
+                  {fmt(Number(form.basic_salary||0)+Number(form.hra||0)+Number(form.cca||0)+Number(form.conveyance||0)+Number(form.allowances||0))}
+                </div>
+              </div>
+              <div className="flex gap-8 mt-16">
+                <button className="btn btn-primary btn-sm" onClick={() => onSave('Salary components')} disabled={saving}>{saving?'Saving...':'Save Changes'}</button>
+                <button className="btn btn-outline btn-sm" onClick={() => { setEditing(null); setForm(emp) }}>Cancel</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <FieldRow label="Basic Salary"     value={fmt(emp.basic_salary)} highlight />
+              <FieldRow label="HRA"              value={fmt(emp.hra)} highlight />
+              <FieldRow label="CCA"              value={fmt(emp.cca)} highlight />
+              <FieldRow label="Conveyance"       value={fmt(emp.conveyance)} highlight />
+              <FieldRow label="Other Allowances" value={fmt(emp.allowances)} highlight />
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 0', marginTop:4, borderTop:'2px solid var(--border)' }}>
+                <span style={{ fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.04em' }}>Monthly Gross</span>
+                <span style={{ fontSize:18, fontWeight:700, color:'var(--accent)', fontFamily:'DM Mono, monospace' }}>{fmt(monthlyGross)}</span>
+              </div>
+              <FieldRow label="PF Applicable"   value={emp.pf_applicable ? 'Yes — Enrolled' : 'No — Form 11 opt-out'} />
+              <FieldRow label="ESIC Applicable"  value={emp.esic_applicable ? 'Yes — Enrolled' : 'No — Opted out'} />
+              <FieldRow label="Pension (EPS)"    value={emp.pension_applicable ? 'Yes — EPS enrolled' : 'No — Not enrolled'} />
+              <button className="btn btn-outline btn-sm mt-16" onClick={() => setEditing('salary')}>✏ Edit Salary Components</button>
+            </>
+          )}
+        </Section>
 
-          {/* ── PREVIOUS EMPLOYER ── */}
+        <Section title="Compliance & Identity">
+          {editing === 'compliance' ? (
+            <>
+              <div className="form-grid">
+                <div className="form-group"><label>PAN Number</label><input name="pan" value={form.pan||''} onChange={onChange} placeholder="ABCPS1234D" /></div>
+                <div className="form-group"><label>Aadhaar Number</label><input name="aadhaar" value={form.aadhaar||''} onChange={onChange} placeholder="123456789012" /></div>
+                <div className="form-group"><label>UAN Number</label><input name="uan_number" value={form.uan_number||''} onChange={onChange} placeholder="100XXXXXXXXX" /></div>
+                <div className="form-group"><label>PF Number</label><input name="pf_number" value={form.pf_number||''} onChange={onChange} placeholder="MH/XXXXX/XXX" /></div>
+              </div>
+              <div className="flex gap-8 mt-16">
+                <button className="btn btn-primary btn-sm" onClick={() => onSave('Compliance details')} disabled={saving}>{saving?'Saving...':'Save Changes'}</button>
+                <button className="btn btn-outline btn-sm" onClick={() => { setEditing(null); setForm(emp) }}>Cancel</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <FieldRow label="PAN Number"  value={emp.pan}        highlight />
+              <FieldRow label="Aadhaar"     value={emp.aadhaar}    highlight />
+              <FieldRow label="UAN Number"  value={emp.uan_number} highlight />
+              <FieldRow label="PF Number"   value={emp.pf_number}  highlight />
+              <button className="btn btn-outline btn-sm mt-16" onClick={() => setEditing('compliance')}>✏ Edit Compliance Details</button>
+            </>
+          )}
+        </Section>
+      </div>
+
+      {/* ── Row 3: Bank + Previous Employer side by side ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
+        <Section title="Bank Details">
+          {editing === 'bank' ? (
+            <>
+              <div className="form-grid">
+                <div className="form-group full"><label>Bank Account Number</label><input name="bank_account" value={form.bank_account||''} onChange={onChange} placeholder="e.g. 50100XXXXXXXX" /></div>
+                <div className="form-group full"><label>Account Holder Name (as per bank)</label><input name="bank_account_name" value={form.bank_account_name||''} onChange={onChange} placeholder="Name as printed on passbook" /></div>
+                <div className="form-group"><label>IFSC Code</label><input name="ifsc_code" value={form.ifsc_code||''} onChange={onChange} placeholder="HDFC0001234" /></div>
+                <div className="form-group"><label>Branch Name</label><input name="bank_branch" value={form.bank_branch||''} onChange={onChange} placeholder="Main Branch" /></div>
+                <div className="form-group full"><label>Place / Location</label><input name="bank_location" value={form.bank_location||''} onChange={onChange} placeholder="Mumbai" /></div>
+              </div>
+              <div className="flex gap-8 mt-16">
+                <button className="btn btn-primary btn-sm" onClick={() => onSave('Bank details')} disabled={saving}>{saving?'Saving...':'Save Changes'}</button>
+                <button className="btn btn-outline btn-sm" onClick={() => { setEditing(null); setForm(emp) }}>Cancel</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <FieldRow label="Bank Account" value={emp.bank_account}      highlight />
+              <FieldRow label="Account Name" value={emp.bank_account_name} />
+              <FieldRow label="IFSC Code"    value={emp.ifsc_code}         highlight />
+              <FieldRow label="Branch Name"  value={emp.bank_branch} />
+              <FieldRow label="Place"        value={emp.bank_location} />
+              <button className="btn btn-outline btn-sm mt-16" onClick={() => setEditing('bank')}>✏ Edit Bank Details</button>
+            </>
+          )}
+        </Section>
           <Section title="Previous Employer / PF Details">
             {editing === 'prev_employer' ? (
               <>
@@ -537,7 +596,9 @@ export default function EmployeeProfile() {
             )}
           </Section>
 
-          {/* ── NOMINEE ── */}
+      </div>
+
+      {/* ── Row 4: Nominee Details (full width) ── */}
           <Section title="Nominee Details">
             {editing === 'nominee' ? (
               <>
@@ -606,7 +667,8 @@ export default function EmployeeProfile() {
             )}
           </Section>
 
-          {/* ── HR ADMIN NOTES ── */}
+
+      {/* ── Row 5: HR Admin + Loan + Advance ── */}
           <Section title="HR Admin">
             {editing === 'hr_admin' ? (
               <>
@@ -650,7 +712,8 @@ export default function EmployeeProfile() {
             )}
           </Section>
 
-          {/* LOAN TRACKING */}
+
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
           <Section title="Loan Tracking">
             <div style={{ display:'flex', justifyContent:'space-between',
               alignItems:'center', marginBottom:16 }}>
@@ -803,7 +866,6 @@ export default function EmployeeProfile() {
             })}
           </Section>
 
-          {/* ADVANCE TRACKING */}
           <Section title="Advance Tracking">
             <div style={{ display:'flex', justifyContent:'space-between',
               alignItems:'center', marginBottom:16 }}>
@@ -955,201 +1017,6 @@ export default function EmployeeProfile() {
               )
             })}
           </Section>
-        </div>
-
-        {/* RIGHT COLUMN */}
-        <div>
-          {/* Salary Components */}
-          <Section title="Salary Components">
-            {editing === 'salary' ? (
-              <>
-                <div style={{ background:'#FFF4ED', border:'1px solid #FED7AA',
-                  borderRadius:8, padding:'10px 14px', marginBottom:16,
-                  fontSize:12, color:'#EA6A05' }}>
-                  ⚠ Salary changes will apply from the next payroll run.
-                  Re-run payroll after saving.
-                </div>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label>Basic Salary (₹) *</label>
-                    <input name="basic_salary" type="number"
-                      value={form.basic_salary||''} onChange={onChange} />
-                  </div>
-                  <div className="form-group">
-                    <label>HRA (₹)</label>
-                    <input name="hra" type="number"
-                      value={form.hra||''} onChange={onChange} />
-                  </div>
-                  <div className="form-group">
-                    <label>CCA (₹)</label>
-                    <input name="cca" type="number"
-                      value={form.cca||''} onChange={onChange} />
-                  </div>
-                  <div className="form-group">
-                    <label>Conveyance (₹)</label>
-                    <input name="conveyance" type="number"
-                      value={form.conveyance||''} onChange={onChange} />
-                  </div>
-                  <div className="form-group full">
-                    <label>Other Allowances (₹)</label>
-                    <input name="allowances" type="number"
-                      value={form.allowances||''} onChange={onChange} />
-                  </div>
-                  <div className="form-group full">
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <input type="checkbox" name="pf_applicable" id="pf_applicable"
-                        checked={form.pf_applicable ?? true} onChange={onChange}
-                        style={{ width:16, height:16, accentColor:'var(--accent)' }} />
-                      <label htmlFor="pf_applicable" style={{ margin:0, cursor:'pointer',
-                        fontSize:13, fontWeight:500, color:'var(--text-primary)' }}>
-                        PF Applicable (uncheck if Form 11 opt-out)
-                      </label>
-                    </div>
-                  </div>
-                  <div className="form-group full">
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <input type="checkbox" name="esic_applicable" id="esic_applicable"
-                        checked={form.esic_applicable ?? true} onChange={onChange}
-                        style={{ width:16, height:16, accentColor:'var(--accent)' }} />
-                      <label htmlFor="esic_applicable" style={{ margin:0, cursor:'pointer',
-                        fontSize:13, fontWeight:500, color:'var(--text-primary)' }}>
-                        ESIC Applicable (uncheck to opt-out)
-                      </label>
-                    </div>
-                  </div>
-                  <div className="form-group full">
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <input type="checkbox" name="pension_applicable" id="pension_applicable"
-                        checked={form.pension_applicable ?? false} onChange={onChange}
-                        style={{ width:16, height:16, accentColor:'var(--accent)' }} />
-                      <label htmlFor="pension_applicable" style={{ margin:0, cursor:'pointer',
-                        fontSize:13, fontWeight:500, color:'var(--text-primary)' }}>
-                        Pension Applicable — EPS (8.33% of Basic, max ₹1,250/month)
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Live gross preview */}
-                <div style={{ background:'#F8F9FB', border:'1px solid #E4E7EC',
-                  borderRadius:8, padding:'12px 16px', marginTop:12 }}>
-                  <div style={{ fontSize:11, color:'var(--text-muted)',
-                    textTransform:'uppercase', letterSpacing:'0.06em' }}>
-                    New Monthly Gross Preview
-                  </div>
-                  <div style={{ fontSize:22, fontWeight:700, color:'var(--accent)',
-                    fontFamily:'DM Mono, monospace', marginTop:4 }}>
-                    {fmt(
-                      Number(form.basic_salary||0) + Number(form.hra||0) +
-                      Number(form.cca||0) + Number(form.conveyance||0) +
-                      Number(form.allowances||0)
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex gap-8 mt-16">
-                  <button className="btn btn-primary btn-sm"
-                    onClick={() => onSave('Salary components')} disabled={saving}>
-                    {saving ? 'Saving...' : 'Save Changes'}
-                  </button>
-                  <button className="btn btn-outline btn-sm"
-                    onClick={() => { setEditing(null); setForm(emp) }}>
-                    Cancel
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <FieldRow label="Basic Salary"
-                  value={fmt(emp.basic_salary)} highlight />
-                <FieldRow label="HRA"
-                  value={fmt(emp.hra)} highlight />
-                <FieldRow label="CCA"
-                  value={fmt(emp.cca)} highlight />
-                <FieldRow label="Conveyance"
-                  value={fmt(emp.conveyance)} highlight />
-                <FieldRow label="Other Allowances"
-                  value={fmt(emp.allowances)} highlight />
-                <div style={{
-                  display:'flex', justifyContent:'space-between',
-                  alignItems:'center', padding:'12px 0', marginTop:4,
-                  borderTop:'2px solid var(--border)',
-                }}>
-                  <span style={{ fontSize:12, fontWeight:700,
-                    color:'var(--text-muted)', textTransform:'uppercase',
-                    letterSpacing:'0.04em' }}>
-                    Monthly Gross
-                  </span>
-                  <span style={{ fontSize:18, fontWeight:700,
-                    color:'var(--accent)', fontFamily:'DM Mono, monospace' }}>
-                    {fmt(monthlyGross)}
-                  </span>
-                </div>
-                <FieldRow label="PF Applicable"
-                  value={emp.pf_applicable ? 'Yes — Enrolled' : 'No — Form 11 opt-out'} />
-                <FieldRow label="ESIC Applicable"
-                  value={emp.esic_applicable ? 'Yes — Enrolled' : 'No — Opted out'} />
-                <FieldRow label="Pension (EPS)"
-                  value={emp.pension_applicable ? 'Yes — EPS enrolled' : 'No — Not enrolled'} />
-                <button className="btn btn-outline btn-sm mt-16"
-                  onClick={() => setEditing('salary')}>
-                  ✏ Edit Salary Components
-                </button>
-              </>
-            )}
-          </Section>
-
-          {/* Compliance Details */}
-          <Section title="Compliance & Identity">
-            {editing === 'compliance' ? (
-              <>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label>PAN Number</label>
-                    <input name="pan" value={form.pan||''}
-                      onChange={onChange} placeholder="ABCPS1234D" />
-                  </div>
-                  <div className="form-group">
-                    <label>Aadhaar Number</label>
-                    <input name="aadhaar" value={form.aadhaar||''}
-                      onChange={onChange} placeholder="123456789012" />
-                  </div>
-                  <div className="form-group">
-                    <label>UAN Number</label>
-                    <input name="uan_number" value={form.uan_number||''}
-                      onChange={onChange} placeholder="100XXXXXXXXX" />
-                  </div>
-                  <div className="form-group">
-                    <label>PF Number</label>
-                    <input name="pf_number" value={form.pf_number||''}
-                      onChange={onChange} placeholder="MH/XXXXX/XXX" />
-                  </div>
-                </div>
-                <div className="flex gap-8 mt-16">
-                  <button className="btn btn-primary btn-sm"
-                    onClick={() => onSave('Compliance details')} disabled={saving}>
-                    {saving ? 'Saving...' : 'Save Changes'}
-                  </button>
-                  <button className="btn btn-outline btn-sm"
-                    onClick={() => { setEditing(null); setForm(emp) }}>
-                    Cancel
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <FieldRow label="PAN Number"    value={emp.pan}        highlight />
-                <FieldRow label="Aadhaar"       value={emp.aadhaar}    highlight />
-                <FieldRow label="UAN Number"    value={emp.uan_number} highlight />
-                <FieldRow label="PF Number"     value={emp.pf_number}  highlight />
-                <button className="btn btn-outline btn-sm mt-16"
-                  onClick={() => setEditing('compliance')}>
-                  ✏ Edit Compliance Details
-                </button>
-              </>
-            )}
-          </Section>
-        </div>
       </div>
     </Layout>
   )
