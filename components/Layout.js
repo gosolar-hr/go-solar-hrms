@@ -97,19 +97,12 @@ export default function Layout({ children }) {
         </div>
 
         <div className="sidebar-footer">
-          <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:4 }}>
-            HRMS PHASE 3 · VERSION 1
-          </div>
-          <div style={{ fontSize:11, color:'var(--text-primary)', fontWeight:600 }}>
-            Powered by <span style={{ color:'var(--accent)' }}>Softsync Solutions</span>
-          </div>
           {role === 'tech' && (
             <div style={{
               fontSize:11, fontWeight:600,
               color:'var(--accent)', background:'var(--accent-light)',
               border:'1px solid #FED7AA', borderRadius:6,
               padding:'4px 8px', marginBottom:10, textAlign:'center',
-              marginTop: 12,
             }}>
               🔧 Technician Access
             </div>
@@ -123,7 +116,7 @@ export default function Layout({ children }) {
               fontSize:12, fontWeight:600,
               color:'var(--text-secondary)',
               cursor:'pointer', width:'100%', transition:'all 0.15s',
-              marginTop: 16,
+              marginBottom: 14,
             }}
             onMouseEnter={e => { e.currentTarget.style.background='var(--bg)'; e.currentTarget.style.borderColor='#D0D5DD' }}
             onMouseLeave={e => { e.currentTarget.style.background='none';      e.currentTarget.style.borderColor='var(--border)' }}
@@ -133,6 +126,10 @@ export default function Layout({ children }) {
             </svg>
             Sign Out
           </button>
+          <div style={{ fontSize:10, color:'var(--text-muted)', textAlign:'center', lineHeight:1.6 }}>
+            HRMS PHASE 3 · VERSION 1<br/>
+            Powered by <span style={{ color:'var(--accent)', fontWeight:600 }}>Softsync Solutions</span>
+          </div>
         </div>
       </aside>
 
