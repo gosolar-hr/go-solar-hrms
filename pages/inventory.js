@@ -29,7 +29,8 @@ const MOV_TYPES = [
 ]
 
 const EMPTY_ITEM = { item_name:'', category:'solar_pv_modules', unit:'pcs', reorder_level:'', description:'', opening_stock:'' }
-const EMPTY_MOV  = { item_id:'', movement_type:'inward', quantity:'', from_location:'HO', to_location:'HO', site_id:'', reference:'', remarks:'', movement_date: new Date().toISOString().split('T')[0] }
+const EMPTY_MOV  = { movement_type:'outward', site_id:'', reference:'', remarks:'', movement_date: new Date().toISOString().split('T')[0] }
+const EMPTY_LINE = { item_id:'', quantity:'' }
 
 export default function Inventory() {
   const [items,      setItems]      = useState([])
@@ -45,6 +46,7 @@ export default function Inventory() {
   const [saving,     setSaving]     = useState(false)
   const [itemForm,   setItemForm]   = useState(EMPTY_ITEM)
   const [movForm,    setMovForm]    = useState(EMPTY_MOV)
+  const [dispatchLines, setDispatchLines] = useState([{ ...EMPTY_LINE }])
   const [search,     setSearch]     = useState('')
   const [catFilter,  setCatFilter]  = useState('all')
   const [editItem,   setEditItem]   = useState(null)
@@ -113,42 +115,63 @@ export default function Inventory() {
   }
 
   const saveMovement = async () => {
-    if (!movForm.item_id || !movForm.quantity) {
-      return setAlert({ type:'error', msg:'Item and quantity are required' })
+    const validLines = dispatchLines.filter(l => l.item_id && Number(l.quantity) > 0)
+    if (validLines.length === 0) {
+      return setAlert({ type:'error', msg:'Add at least one item with a quantity.' })
+    }
+    if (['outward','transfer','return'].includes(movForm.movement_type) && !movForm.site_id) {
+      return setAlert({ type:'error', msg:'Please select a site.' })
     }
     setSaving(true)
 
-    // Set locations based on movement type
-    let from = movForm.from_location
-    let to   = movForm.to_location
+    let successCount = 0
+    let lastError = null
 
-    if (movForm.movement_type === 'inward') {
-      from = null; to = 'HO'
-    } else if (movForm.movement_type === 'outward') {
-      from = 'HO'
-      const site = sites.find(s => s.id === movForm.site_id)
-      to = site ? site.client_name : 'Site'
-    } else if (movForm.movement_type === 'return') {
-      const site = sites.find(s => s.id === movForm.site_id)
-      from = site ? site.client_name : 'Site'
-      to = 'HO'
+    for (const line of validLines) {
+      let from = null
+      let to   = 'HO'
+
+      if (movForm.movement_type === 'inward') {
+        from = null; to = 'HO'
+      } else if (movForm.movement_type === 'outward') {
+        from = 'HO'
+        const site = sites.find(s => s.id === movForm.site_id)
+        to = site ? site.client_name : 'Site'
+      } else if (movForm.movement_type === 'return') {
+        const site = sites.find(s => s.id === movForm.site_id)
+        from = site ? site.client_name : 'Site'
+        to = 'HO'
+      } else if (movForm.movement_type === 'transfer') {
+        from = 'HO'
+        const site = sites.find(s => s.id === movForm.site_id)
+        to = site ? site.client_name : 'Site'
+      }
+
+      const res = await fetch('/api/inventory/movements', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          item_id       : line.item_id,
+          movement_type : movForm.movement_type,
+          quantity      : Number(line.quantity),
+          from_location : from,
+          to_location   : to,
+          site_id       : movForm.site_id || null,
+          reference     : movForm.reference || null,
+          remarks       : movForm.remarks   || null,
+          movement_date : movForm.movement_date,
+        })
+      })
+      const data = await res.json()
+      if (!res.ok) { lastError = data.error; break }
+      successCount++
     }
 
-    const res = await fetch('/api/inventory/movements', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        ...movForm,
-        quantity      : Number(movForm.quantity),
-        from_location : from,
-        to_location   : to,
-        site_id       : movForm.site_id || null,
-      })
-    })
-    const data = await res.json()
     setSaving(false)
-    if (!res.ok) return setAlert({ type:'error', msg: data.error })
-    setAlert({ type:'success', msg:'Movement recorded successfully.' })
+    if (lastError) return setAlert({ type:'error', msg: `Error on item ${successCount + 1}: ${lastError}` })
+
+    setAlert({ type:'success', msg: `${successCount} item${successCount !== 1 ? 's' : ''} dispatched successfully.` })
     setMovForm(EMPTY_MOV)
+    setDispatchLines([{ ...EMPTY_LINE }])
     setShowMovForm(false)
     load()
   }
@@ -257,37 +280,19 @@ export default function Inventory() {
       {showMovForm && (
         <div className="card card-pad" style={{ marginBottom:20 }}>
           <div className="card-title" style={{ marginBottom:20 }}>Material Dispatch</div>
-          <div className="form-grid">
+
+          {/* Top row — movement type, site, date, reference */}
+          <div className="form-grid" style={{ marginBottom:16 }}>
             <div className="form-group">
               <label>Movement Type *</label>
               <select name="movement_type" value={movForm.movement_type} onChange={onMovChange}>
                 {MOV_TYPES.map(m => <option key={m.value} value={m.value}>{m.icon} {m.label}</option>)}
               </select>
             </div>
-            <div className="form-group">
-              <label>Item *</label>
-              <select name="item_id" value={movForm.item_id} onChange={onMovChange}>
-                <option value="">Select item...</option>
-                {items.map(i => (
-                  <option key={i.id} value={i.id}>
-                    {i.item_code} — {i.item_name} (HO: {i.ho_stock} {i.unit})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Quantity *</label>
-              <input name="quantity" type="number" placeholder="0" min="0.01" step="0.01" value={movForm.quantity} onChange={onMovChange} />
-            </div>
-            <div className="form-group">
-              <label>Date</label>
-              <input name="movement_date" type="date" value={movForm.movement_date} onChange={onMovChange} />
-            </div>
 
-            {/* Site selection — shown for outward/transfer/return */}
             {['outward','transfer','return'].includes(movForm.movement_type) && (
               <div className="form-group">
-                <label>{movForm.movement_type === 'return' ? 'Return From Site' : 'Site'}</label>
+                <label>{movForm.movement_type === 'return' ? 'Return From Site *' : 'Site *'}</label>
                 <select name="site_id" value={movForm.site_id} onChange={onMovChange}>
                   <option value="">Select site...</option>
                   {sites.map(s => <option key={s.id} value={s.id}>{s.client_name}</option>)}
@@ -296,8 +301,12 @@ export default function Inventory() {
             )}
 
             <div className="form-group">
-              <label>Reference (PO/Invoice/Visit)</label>
-              <input name="reference" placeholder="Optional reference number" value={movForm.reference} onChange={onMovChange} />
+              <label>Date</label>
+              <input name="movement_date" type="date" value={movForm.movement_date} onChange={onMovChange} />
+            </div>
+            <div className="form-group">
+              <label>Reference (PO / Invoice)</label>
+              <input name="reference" placeholder="Optional" value={movForm.reference} onChange={onMovChange} />
             </div>
             <div className="form-group full">
               <label>Remarks</label>
@@ -305,21 +314,110 @@ export default function Inventory() {
             </div>
           </div>
 
-          {/* Movement summary */}
-          {movForm.item_id && movForm.quantity && (
+          {/* Multi-item lines */}
+          <div style={{ marginBottom:8 }}>
+            <div style={{ fontSize:12, fontWeight:600, color:'var(--text-muted)',
+              textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:10 }}>
+              Items to Dispatch
+            </div>
+
+            {/* Line header */}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 140px 36px',
+              gap:8, marginBottom:6, padding:'0 4px' }}>
+              <div style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)' }}>Item</div>
+              <div style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)' }}>Quantity</div>
+              <div/>
+            </div>
+
+            {dispatchLines.map((line, idx) => {
+              const selItem = items.find(i => i.id === line.item_id)
+              return (
+                <div key={idx} style={{ display:'grid', gridTemplateColumns:'1fr 140px 36px',
+                  gap:8, marginBottom:8, alignItems:'center' }}>
+
+                  {/* Item select — full list same as Category items */}
+                  <select
+                    value={line.item_id}
+                    onChange={e => {
+                      const updated = [...dispatchLines]
+                      updated[idx] = { ...updated[idx], item_id: e.target.value }
+                      setDispatchLines(updated)
+                    }}
+                    style={{ width:'100%' }}>
+                    <option value="">Select item…</option>
+                    {items.map(i => (
+                      <option key={i.id} value={i.id}>
+                        [{CATEGORIES.find(c=>c.value===i.category)?.label || i.category}] {i.item_name} — HO: {i.ho_stock} {i.unit}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Quantity */}
+                  <div style={{ position:'relative' }}>
+                    <input
+                      type="number" min="0.01" step="0.01"
+                      placeholder="Qty"
+                      value={line.quantity}
+                      onChange={e => {
+                        const updated = [...dispatchLines]
+                        updated[idx] = { ...updated[idx], quantity: e.target.value }
+                        setDispatchLines(updated)
+                      }}
+                      style={{ width:'100%', paddingRight: selItem ? 32 : 10 }}
+                    />
+                    {selItem && (
+                      <span style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)',
+                        fontSize:10, color:'var(--text-muted)', pointerEvents:'none' }}>
+                        {selItem.unit}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Remove line */}
+                  <button
+                    onClick={() => setDispatchLines(lines => lines.filter((_, i) => i !== idx))}
+                    disabled={dispatchLines.length === 1}
+                    style={{ width:32, height:32, display:'flex', alignItems:'center',
+                      justifyContent:'center', border:'1px solid #FECDCA', background:'#FEF3F2',
+                      borderRadius:6, cursor: dispatchLines.length === 1 ? 'not-allowed' : 'pointer',
+                      color:'#B42318', fontSize:16, opacity: dispatchLines.length === 1 ? 0.4 : 1 }}>
+                    ×
+                  </button>
+                </div>
+              )
+            })}
+
+            {/* Add another item row */}
+            <button
+              onClick={() => setDispatchLines(lines => [...lines, { ...EMPTY_LINE }])}
+              style={{ marginTop:4, fontSize:12, color:'var(--accent)', background:'transparent',
+                border:'1px dashed var(--accent)', borderRadius:6, padding:'5px 14px',
+                cursor:'pointer', fontWeight:600 }}>
+              + Add Another Item
+            </button>
+          </div>
+
+          {/* Summary */}
+          {dispatchLines.some(l => l.item_id && l.quantity) && (
             <div style={{ padding:'10px 14px', background:'#EFF8FF', border:'1px solid #B2DDFF',
               borderRadius:8, marginTop:12, fontSize:13, color:'#1849A9' }}>
-              {movForm.movement_type === 'inward'   && `↓ Adding ${movForm.quantity} units to HO stock`}
-              {movForm.movement_type === 'outward'  && `↑ Issuing ${movForm.quantity} units from HO to site`}
-              {movForm.movement_type === 'transfer' && `⇄ Moving ${movForm.quantity} units between locations`}
-              {movForm.movement_type === 'return'   && `↩ Returning ${movForm.quantity} units from site to HO`}
+              {movForm.movement_type === 'inward'  && `↓ Adding ${dispatchLines.filter(l=>l.item_id&&l.quantity).length} item type(s) to HO stock`}
+              {movForm.movement_type === 'outward' && `↑ Issuing ${dispatchLines.filter(l=>l.item_id&&l.quantity).length} item type(s) from HO to site`}
+              {movForm.movement_type === 'transfer'&& `⇄ Transferring ${dispatchLines.filter(l=>l.item_id&&l.quantity).length} item type(s)`}
+              {movForm.movement_type === 'return'  && `↩ Returning ${dispatchLines.filter(l=>l.item_id&&l.quantity).length} item type(s) from site to HO`}
             </div>
           )}
 
           <div className="divider" />
           <div className="flex gap-8">
-            <button className="btn btn-primary" onClick={saveMovement} disabled={saving}>{saving?'Saving...':'Material Dispatch'}</button>
-            <button className="btn btn-outline" onClick={() => setShowMovForm(false)}>Cancel</button>
+            <button className="btn btn-primary" onClick={saveMovement} disabled={saving}>
+              {saving ? 'Saving...' : `Dispatch ${dispatchLines.filter(l=>l.item_id&&l.quantity).length || ''} Item${dispatchLines.filter(l=>l.item_id&&l.quantity).length!==1?'s':''}`}
+            </button>
+            <button className="btn btn-outline" onClick={() => {
+              setShowMovForm(false)
+              setMovForm(EMPTY_MOV)
+              setDispatchLines([{ ...EMPTY_LINE }])
+            }}>Cancel</button>
           </div>
         </div>
       )}
