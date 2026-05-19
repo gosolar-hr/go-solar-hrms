@@ -442,7 +442,7 @@ export default function Login() {
             <div className="stats">
               <div><div className="stat-n">15</div><div className="stat-l">Employees</div></div>
               <div><div className="stat-n">PF</div><div className="stat-l">Compliant</div></div>
-              <div><div className="stat-n">v2.0</div><div className="stat-l">Phase 2</div></div>
+              <div><div className="stat-n">v1.0</div><div className="stat-l">Phase 3</div></div>
             </div>
           </div>
         </div>
