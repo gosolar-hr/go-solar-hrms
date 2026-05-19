@@ -22,7 +22,8 @@ export default async function handler(req, res) {
       name, email, phone, date_of_joining,
       designation, department, gender,
       basic_salary, hra, cca, conveyance, allowances,
-      pf_applicable, esic_applicable, pan, aadhaar, bank_account,
+      pf_applicable, esic_applicable, pension_applicable,
+      pan, aadhaar, bank_account,
       ifsc_code, bank_branch, bank_location,
       uan_number, pf_number, emp_code, work_schedule,
     } = req.body
@@ -45,6 +46,7 @@ export default async function handler(req, res) {
         allowances     : Number(allowances)     || 0,
         pf_applicable  : pf_applicable   ?? true,
         esic_applicable: esic_applicable ?? true,
+        pension_applicable: pension_applicable ?? false,
         pan            : pan            || null,
         aadhaar        : aadhaar        || null,
         bank_account   : bank_account   || null,

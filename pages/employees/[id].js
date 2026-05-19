@@ -232,6 +232,9 @@ export default function EmployeeProfile() {
                 <span className={`badge ${emp.esic_applicable ? 'badge-orange' : 'badge-gray'}`}>
                   {emp.esic_applicable ? 'ESIC Enrolled' : 'ESIC Opt-out'}
                 </span>
+                <span className={`badge ${emp.pension_applicable ? 'badge-orange' : 'badge-gray'}`}>
+                  {emp.pension_applicable ? 'Pension Enrolled' : 'Pension Opt-out'}
+                </span>
                 <span className="badge badge-gray">
                   {emp.gender === 'female' ? 'Female' : emp.gender === 'other' ? 'Other' : 'Male'}
                 </span>
@@ -788,6 +791,17 @@ export default function EmployeeProfile() {
                       </label>
                     </div>
                   </div>
+                  <div className="form-group full">
+                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                      <input type="checkbox" name="pension_applicable" id="pension_applicable"
+                        checked={form.pension_applicable ?? false} onChange={onChange}
+                        style={{ width:16, height:16, accentColor:'var(--accent)' }} />
+                      <label htmlFor="pension_applicable" style={{ margin:0, cursor:'pointer',
+                        fontSize:13, fontWeight:500, color:'var(--text-primary)' }}>
+                        Pension Applicable — EPS (8.33% of Basic, max ₹1,250/month)
+                      </label>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Live gross preview */}
@@ -849,6 +863,8 @@ export default function EmployeeProfile() {
                   value={emp.pf_applicable ? 'Yes — Enrolled' : 'No — Form 11 opt-out'} />
                 <FieldRow label="ESIC Applicable"
                   value={emp.esic_applicable ? 'Yes — Enrolled' : 'No — Opted out'} />
+                <FieldRow label="Pension (EPS)"
+                  value={emp.pension_applicable ? 'Yes — EPS enrolled' : 'No — Not enrolled'} />
                 <button className="btn btn-outline btn-sm mt-16"
                   onClick={() => setEditing('salary')}>
                   ✏ Edit Salary Components
