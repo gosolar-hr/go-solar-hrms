@@ -82,8 +82,8 @@ export default function Form16() {
       )}
 
       {/* Controls */}
-      <div className="card" style={{ marginBottom:24 }}>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr auto', gap:16, alignItems:'end' }}>
+      <div className="card" style={{ marginBottom:24, padding:'24px 28px' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 280px 200px', gap:20, alignItems:'end' }}>
           <div className="form-group" style={{ margin:0 }}>
             <label>Employee</label>
             <select value={empId} onChange={e => setEmpId(e.target.value)}>
@@ -101,7 +101,8 @@ export default function Form16() {
               {FY_OPTIONS.map(f => <option key={f} value={f}>FY {f}</option>)}
             </select>
           </div>
-          <button className="btn btn-primary" onClick={generate} disabled={loading || !empId}>
+          <button className="btn btn-primary" onClick={generate} disabled={loading || !empId}
+            style={{ width:'100%', height:42 }}>
             {loading ? 'Generating…' : 'Generate Form 16'}
           </button>
         </div>
