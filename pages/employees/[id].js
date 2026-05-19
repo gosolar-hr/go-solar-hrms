@@ -15,10 +15,10 @@ const DESIGNATIONS = [
 function Section({ title, children }) {
   return (
     <div className="card" style={{ marginBottom: 20 }}>
-      <div className="card-header">
+      <div className="card-header" style={{ padding:'16px 24px' }}>
         <span className="card-title">{title}</span>
       </div>
-      <div className="card-pad">
+      <div className="card-pad" style={{ padding:'4px 24px 20px' }}>
         {children}
       </div>
     </div>
@@ -30,14 +30,14 @@ function FieldRow({ label, value, highlight }) {
   return (
     <div style={{
       display       : 'grid',
-      gridTemplateColumns: '180px 1fr',
-      gap           : 16,
-      padding       : '10px 0',
+      gridTemplateColumns: '200px 1fr',
+      gap           : 24,
+      padding       : '11px 0',
       borderBottom  : '1px solid var(--border-light)',
-      alignItems    : 'center',
+      alignItems    : 'start',
     }}>
-      <div style={{ fontSize:12, fontWeight:600, color:'var(--text-muted)',
-        textTransform:'uppercase', letterSpacing:'0.04em' }}>
+      <div style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)',
+        textTransform:'uppercase', letterSpacing:'0.05em', paddingTop:2, lineHeight:1.4 }}>
         {label}
       </div>
       <div style={{
@@ -45,6 +45,8 @@ function FieldRow({ label, value, highlight }) {
         fontWeight  : highlight ? 600 : 400,
         color       : highlight ? 'var(--text-primary)' : 'var(--text-secondary)',
         fontFamily  : highlight ? 'DM Mono, monospace' : 'inherit',
+        lineHeight  : 1.5,
+        wordBreak   : 'break-word',
       }}>
         {value || <span style={{ color:'var(--text-muted)', fontStyle:'italic' }}>Not provided</span>}
       </div>
