@@ -3,28 +3,18 @@ import { requireRole } from '../../../lib/requireAuth'
 import { refreshAttendanceSummary } from '../../../lib/attendanceUtils'
 
 export default async function handler(req, res) {
-  const session = await requireRole(req, res, ['hr', 'tech'])
+  // HR only
+  const session = await requireRole(req, res, ['hr'])
   if (!session) return
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   const { id, availed_date } = req.body
-  const isHR = session.role === 'hr'
 
   if (!id || !availed_date) {
     return res.status(400).json({ error: 'id and availed_date are required' })
   }
 
-  // Validate availed_date is not in the past (employees only; HR can backdate)
-  const availedOn = new Date(availed_date)
-  const today     = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  if (!isHR && availedOn <= today) {
-    return res.status(400).json({ error: 'Avail date must be a future date. Contact HR to backdate.' })
-  }
-
-  // Fetch the request
   const { data: request, error: fetchErr } = await supabaseAdmin
     .from('comp_off_requests')
     .select('*, employees(comp_off_balance)')
@@ -33,18 +23,13 @@ export default async function handler(req, res) {
 
   if (fetchErr || !request) return res.status(404).json({ error: 'Request not found' })
 
-  // Non-HR can only avail their own
-  if (!isHR && session.employeeId !== request.employee_id) {
-    return res.status(403).json({ error: 'You can only avail your own comp off' })
-  }
-
   if (request.status !== 'approved') {
     return res.status(400).json({ error: `Request must be approved before availing. Current status: ${request.status}` })
   }
 
   const currentBalance = request.employees?.comp_off_balance || 0
   if (currentBalance <= 0) {
-    return res.status(400).json({ error: 'No comp off balance available' })
+    return res.status(400).json({ error: 'No comp off balance available for this employee' })
   }
 
   // 1. Mark request as availed
@@ -55,7 +40,7 @@ export default async function handler(req, res) {
 
   if (updateErr) return res.status(500).json({ error: updateErr.message })
 
-  // 2. Decrement employee balance
+  // 2. Decrement balance
   const { error: balErr } = await supabaseAdmin
     .from('employees')
     .update({ comp_off_balance: currentBalance - 1 })
@@ -63,7 +48,7 @@ export default async function handler(req, res) {
 
   if (balErr) return res.status(500).json({ error: balErr.message })
 
-  // 3. Set attendance_details for that date to 'CO'
+  // 3. Mark attendance as CO for that day
   const { error: attErr } = await supabaseAdmin
     .from('attendance_details')
     .upsert([{
@@ -76,12 +61,9 @@ export default async function handler(req, res) {
 
   if (attErr) return res.status(500).json({ error: attErr.message })
 
-  // 4. Refresh attendance summary for that month
+  // 4. Refresh attendance summary
   const [year, month] = availed_date.split('-').map(Number)
   await refreshAttendanceSummary(request.employee_id, month, year)
 
-  return res.status(200).json({
-    message : 'Comp off availed successfully',
-    balance : currentBalance - 1,
-  })
+  return res.status(200).json({ message: 'Comp off availed successfully', balance: currentBalance - 1 })
 }

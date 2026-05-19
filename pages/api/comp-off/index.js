@@ -1,33 +1,22 @@
 import { supabaseAdmin } from '../../../lib/supabase'
 import { requireRole } from '../../../lib/requireAuth'
 
-// ── Constants (edit here to change policy) ───────────────────────────
-const MAX_APPLY_DAYS_AFTER  = 7    // must apply within N days of working
-const MAX_BALANCE           = 3    // max comp offs an employee can hold
-const EXPIRY_DAYS           = 30   // must avail within N days of worked_date
+// ── Policy constants ─────────────────────────────────────────────────
+const MAX_BALANCE = 3    // max comp offs an employee can hold
+const EXPIRY_DAYS = 30   // must avail within N days of worked_date
 
 export default async function handler(req, res) {
-  const session = await requireRole(req, res, ['hr', 'tech'])
+  // HR only — employees have no access to this endpoint
+  const session = await requireRole(req, res, ['hr'])
   if (!session) return
 
-  const isHR = session.role === 'hr'
-
-  // ── GET — list requests ──────────────────────────────────────────
+  // ── GET — list all requests ──────────────────────────────────────
   if (req.method === 'GET') {
     let query = supabaseAdmin
       .from('comp_off_requests')
-      .select(`
-        *,
-        employees ( id, name, emp_code, department )
-      `)
+      .select(`*, employees ( id, name, emp_code, department )`)
       .order('created_at', { ascending: false })
 
-    // Technicians/employees only see their own
-    if (!isHR) {
-      query = query.eq('employee_id', session.employeeId)
-    }
-
-    // Optional filters
     if (req.query.status)      query = query.eq('status', req.query.status)
     if (req.query.employee_id) query = query.eq('employee_id', req.query.employee_id)
 
@@ -36,7 +25,7 @@ export default async function handler(req, res) {
     return res.status(200).json(data)
   }
 
-  // ── POST — employee submits a new request ────────────────────────
+  // ── POST — HR records a new comp off for an employee ────────────
   if (req.method === 'POST') {
     const { employee_id, worked_date, worked_day_type, reason, requested_avail_date } = req.body
 
@@ -44,29 +33,15 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'employee_id, worked_date, worked_day_type and reason are required' })
     }
 
-    // Non-HR can only apply for themselves
-    if (!isHR && session.employeeId !== employee_id) {
-      return res.status(403).json({ error: 'You can only apply comp off for yourself' })
-    }
-
-    // Rule 1: Must apply within MAX_APPLY_DAYS_AFTER days of working
-    const workedOn   = new Date(worked_date)
-    const today      = new Date()
+    const workedOn = new Date(worked_date)
+    const today    = new Date()
     today.setHours(0, 0, 0, 0)
-    const daysSince  = Math.floor((today - workedOn) / 86400000)
 
-    if (!isHR && daysSince > MAX_APPLY_DAYS_AFTER) {
-      return res.status(400).json({
-        error: `Comp off must be applied within ${MAX_APPLY_DAYS_AFTER} days of working. This date was ${daysSince} days ago.`
-      })
-    }
-
-    // Rule 2: Worked date cannot be in the future
     if (workedOn > today) {
       return res.status(400).json({ error: 'Worked date cannot be in the future' })
     }
 
-    // Rule 3: Check current balance
+    // Check current balance
     const { data: emp } = await supabaseAdmin
       .from('employees')
       .select('comp_off_balance')
@@ -75,7 +50,7 @@ export default async function handler(req, res) {
 
     if ((emp?.comp_off_balance || 0) >= MAX_BALANCE) {
       return res.status(400).json({
-        error: `Maximum comp off balance is ${MAX_BALANCE}. Please avail existing comp offs before applying for more.`
+        error: `Maximum comp off balance is ${MAX_BALANCE}. Please avail existing comp offs before adding more.`
       })
     }
 
@@ -94,7 +69,7 @@ export default async function handler(req, res) {
 
     if (error) {
       if (error.code === '23505') {
-        return res.status(409).json({ error: 'A comp off request for this worked date already exists.' })
+        return res.status(409).json({ error: 'A comp off record for this worked date already exists for this employee.' })
       }
       return res.status(500).json({ error: error.message })
     }
@@ -104,8 +79,6 @@ export default async function handler(req, res) {
 
   // ── PUT — HR approves or rejects ─────────────────────────────────
   if (req.method === 'PUT') {
-    if (!isHR) return res.status(403).json({ error: 'Only HR can approve or reject comp off requests' })
-
     const { id, action, rejection_reason } = req.body
 
     if (!id || !action) return res.status(400).json({ error: 'id and action required' })
@@ -113,7 +86,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'action must be "approve" or "reject"' })
     }
 
-    // Fetch the request
     const { data: request, error: fetchErr } = await supabaseAdmin
       .from('comp_off_requests')
       .select('*, employees(comp_off_balance)')
@@ -126,25 +98,14 @@ export default async function handler(req, res) {
     }
 
     if (action === 'approve') {
-      // Check expiry: worked_date + EXPIRY_DAYS must be in the future
       const expiryDate = new Date(request.worked_date)
       expiryDate.setDate(expiryDate.getDate() + EXPIRY_DAYS)
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
 
-      if (expiryDate < today) {
-        return res.status(400).json({
-          error: `This comp off has expired. It should have been availed by ${expiryDate.toDateString()}.`
-        })
-      }
-
-      // Update request status
       await supabaseAdmin
         .from('comp_off_requests')
         .update({ status: 'approved', approved_by: session.email, approved_at: new Date().toISOString() })
         .eq('id', id)
 
-      // Increment employee balance
       await supabaseAdmin
         .from('employees')
         .update({ comp_off_balance: (request.employees?.comp_off_balance || 0) + 1 })
