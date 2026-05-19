@@ -562,7 +562,7 @@ export default function Login() {
             </div>
 
             <div className="version">
-              <div style={{ marginBottom: 4, opacity: 0.6 }}>HRMS PHASE 2 · V2.0</div>
+              <div style={{ marginBottom: 4, opacity: 0.6 }}>HRMS PHASE 3 · VERSION 1</div>
               <div style={{ color: '#101828', fontWeight: 600 }}>
                 Powered by <span style={{ color: '#F97316' }}>Softsync Solutions</span>
               </div>

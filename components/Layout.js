@@ -98,7 +98,7 @@ export default function Layout({ children }) {
 
         <div className="sidebar-footer">
           <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:4 }}>
-            HRMS PHASE 3 · V3.0
+            HRMS PHASE 3 · VERSION 1
           </div>
           <div style={{ fontSize:11, color:'var(--text-primary)', fontWeight:600 }}>
             Powered by <span style={{ color:'var(--accent)' }}>Softsync Solutions</span>
