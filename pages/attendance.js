@@ -18,6 +18,7 @@ const STATUS_CONFIG = {
   'P:A' : { label: 'Half Day',       color: '#F79009', bg: '#FFFAEB', border: '#FEF0C7' },
   'A:P' : { label: 'Half Day',       color: '#F79009', bg: '#FFFAEB', border: '#FEF0C7' },
   'A:A' : { label: 'Absent/LWP',     color: '#F04438', bg: '#FEF3F2', border: '#FECDCA' },
+  'CO'  : { label: 'Comp Off',       color: '#0E9384', bg: '#F0FDF9', border: '#99E6DA' },
 }
 
 const SLAB_OPTIONS = [
@@ -27,7 +28,7 @@ const SLAB_OPTIONS = [
   { value: 0.5, label: '50% — Late after 10:30'                       },
 ]
 
-const STATUS_OPTIONS = ['P', 'PL', 'MO', 'AO', 'A', 'H', 'WO']
+const STATUS_OPTIONS = ['P', 'PL', 'CO', 'MO', 'AO', 'A', 'H', 'WO']
 
 export default function Attendance() {
   const now  = new Date()
