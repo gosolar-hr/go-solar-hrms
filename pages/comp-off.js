@@ -132,28 +132,30 @@ export default function CompOff() {
       )}
 
       {/* Summary cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 32 }}>
         {[
           { label: 'Pending Review', value: pending,         color: '#B54708', bg: '#FFFAEB' },
           { label: 'Approved',       value: approved,        color: '#027A48', bg: '#ECFDF3' },
           { label: 'Total',          value: requests.length, color: '#344054', bg: '#F8F9FB' },
         ].map(c => (
-          <div key={c.label} style={{ background: c.bg, border: `1px solid ${c.color}22`, borderRadius: 12, padding: '14px 18px' }}>
-            <div style={{ fontSize: 12, color: c.color, fontWeight: 500, marginBottom: 4 }}>{c.label}</div>
-            <div style={{ fontSize: 28, fontWeight: 700, color: c.color }}>{c.value}</div>
+          <div key={c.label} style={{ background: c.bg, border: `1px solid ${c.color}22`, borderRadius: 14, padding: '20px 24px' }}>
+            <div style={{ fontSize: 12, color: c.color, fontWeight: 600, marginBottom: 8, textTransform:'uppercase', letterSpacing:'0.04em' }}>{c.label}</div>
+            <div style={{ fontSize: 36, fontWeight: 700, color: c.color, lineHeight: 1 }}>{c.value}</div>
           </div>
         ))}
       </div>
 
       {/* Filter tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
         {['', 'pending', 'approved', 'rejected', 'availed'].map(s => (
           <button key={s} onClick={() => setFilterStatus(s)}
             style={{
-              padding: '6px 16px', borderRadius: 20, fontSize: 13, cursor: 'pointer', border: '1px solid',
+              padding: '8px 20px', borderRadius: 20, fontSize: 13, cursor: 'pointer', border: '1px solid',
+              fontWeight: filterStatus === s ? 600 : 400,
               background : filterStatus === s ? 'var(--primary)' : 'transparent',
               color      : filterStatus === s ? '#fff' : 'var(--text-secondary)',
               borderColor: filterStatus === s ? 'var(--primary)' : 'var(--border)',
+              transition : 'all 0.15s',
             }}>
             {s ? (STATUS_CONFIG[s]?.label || s) : 'All'}
           </button>
@@ -277,50 +279,62 @@ export default function CompOff() {
 
       {/* ── Add record modal ── */}
       {showForm && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:999, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <div className="card" style={{ width: 480, padding: 28 }}>
-            <h3 style={{ margin: '0 0 20px', fontSize: 16 }}>Add Comp Off Record</h3>
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:999, display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
+          <div className="card" style={{ width: 520, padding: 0, overflow:'hidden' }}>
 
-            <div className="form-group">
-              <label>Employee</label>
-              <select value={form.employee_id} onChange={e => setForm(p => ({ ...p, employee_id: e.target.value }))}>
-                <option value="">Select employee…</option>
-                {employees.map(e => (
-                  <option key={e.id} value={e.id}>{e.name} {e.emp_code ? `(${e.emp_code})` : ''}</option>
-                ))}
-              </select>
+            {/* Modal header */}
+            <div style={{ padding:'22px 28px 18px', borderBottom:'1px solid var(--border)' }}>
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>Add Comp Off Record</h3>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color:'var(--text-muted)' }}>Record a compensatory off for an employee who worked on a holiday or week off</p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div className="form-group">
-                <label>Date worked</label>
-                <input type="date" value={form.worked_date} max={todayStr}
-                  onChange={e => setForm(p => ({ ...p, worked_date: e.target.value }))} />
-              </div>
-              <div className="form-group">
-                <label>Day type</label>
-                <select value={form.worked_day_type}
-                  onChange={e => setForm(p => ({ ...p, worked_day_type: e.target.value }))}>
-                  <option value="holiday">Public Holiday</option>
-                  <option value="weekoff">Week Off</option>
+            {/* Modal body */}
+            <div style={{ padding:'24px 28px', display:'flex', flexDirection:'column', gap:18 }}>
+
+              <div className="form-group" style={{ margin:0 }}>
+                <label>Employee</label>
+                <select value={form.employee_id} onChange={e => setForm(p => ({ ...p, employee_id: e.target.value }))}>
+                  <option value="">Select employee…</option>
+                  {employees.map(e => (
+                    <option key={e.id} value={e.id}>{e.name} {e.emp_code ? `(${e.emp_code})` : ''}</option>
+                  ))}
                 </select>
               </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div className="form-group" style={{ margin:0 }}>
+                  <label>Date Worked</label>
+                  <input type="date" value={form.worked_date} max={todayStr}
+                    onChange={e => setForm(p => ({ ...p, worked_date: e.target.value }))} />
+                </div>
+                <div className="form-group" style={{ margin:0 }}>
+                  <label>Day Type</label>
+                  <select value={form.worked_day_type}
+                    onChange={e => setForm(p => ({ ...p, worked_day_type: e.target.value }))}>
+                    <option value="holiday">Public Holiday</option>
+                    <option value="weekoff">Week Off</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-group" style={{ margin:0 }}>
+                <label>Work Done / Reason</label>
+                <textarea rows={3} value={form.reason}
+                  onChange={e => setForm(p => ({ ...p, reason: e.target.value }))}
+                  placeholder="Briefly describe the work done on this day…"
+                  style={{ resize:'vertical' }} />
+              </div>
+
+              <div className="form-group" style={{ margin:0 }}>
+                <label>Preferred Avail Date <span style={{ fontWeight:400, color:'var(--text-muted)' }}>(optional)</span></label>
+                <input type="date" value={form.requested_avail_date}
+                  onChange={e => setForm(p => ({ ...p, requested_avail_date: e.target.value }))} />
+              </div>
+
             </div>
 
-            <div className="form-group">
-              <label>Work done / Reason</label>
-              <textarea rows={3} value={form.reason}
-                onChange={e => setForm(p => ({ ...p, reason: e.target.value }))}
-                placeholder="Briefly describe the work done on this day…" />
-            </div>
-
-            <div className="form-group">
-              <label>Preferred avail date <span style={{ fontWeight:400, color:'var(--text-muted)' }}>(optional)</span></label>
-              <input type="date" value={form.requested_avail_date}
-                onChange={e => setForm(p => ({ ...p, requested_avail_date: e.target.value }))} />
-            </div>
-
-            <div style={{ display:'flex', gap:10, justifyContent:'flex-end', marginTop:8 }}>
+            {/* Modal footer */}
+            <div style={{ padding:'16px 28px 22px', borderTop:'1px solid var(--border)', display:'flex', gap:10, justifyContent:'flex-end' }}>
               <button className="btn btn-outline" onClick={() => setShowForm(false)}>Cancel</button>
               <button className="btn btn-primary"
                 disabled={submitting || !form.employee_id || !form.worked_date || !form.reason.trim()}
@@ -334,19 +348,23 @@ export default function CompOff() {
 
       {/* ── Reject modal ── */}
       {rejectModal && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:999, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <div className="card" style={{ width: 440, padding: 24 }}>
-            <h3 style={{ margin:'0 0 4px', fontSize:16 }}>Reject Comp Off</h3>
-            <p style={{ fontSize:13, color:'var(--text-secondary)', margin:'0 0 16px' }}>
-              {rejectModal.employees?.name} — worked on {fmt(rejectModal.worked_date)}
-            </p>
-            <div className="form-group">
-              <label>Reason for rejection</label>
-              <textarea rows={3} value={rejectReason}
-                onChange={e => setRejectReason(e.target.value)}
-                placeholder="Enter reason…" />
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:999, display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
+          <div className="card" style={{ width: 460, padding: 0, overflow:'hidden' }}>
+            <div style={{ padding:'22px 28px 18px', borderBottom:'1px solid var(--border)' }}>
+              <h3 style={{ margin:0, fontSize:17, fontWeight:600 }}>Reject Comp Off</h3>
+              <p style={{ margin:'4px 0 0', fontSize:13, color:'var(--text-muted)' }}>
+                {rejectModal.employees?.name} — worked on {fmt(rejectModal.worked_date)}
+              </p>
             </div>
-            <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+            <div style={{ padding:'24px 28px' }}>
+              <div className="form-group" style={{ margin:0 }}>
+                <label>Reason for rejection</label>
+                <textarea rows={3} value={rejectReason}
+                  onChange={e => setRejectReason(e.target.value)}
+                  placeholder="Enter reason…" style={{ resize:'vertical' }} />
+              </div>
+            </div>
+            <div style={{ padding:'16px 28px 22px', borderTop:'1px solid var(--border)', display:'flex', gap:10, justifyContent:'flex-end' }}>
               <button className="btn btn-outline" onClick={() => setRejectModal(null)}>Cancel</button>
               <button className="btn btn-primary"
                 disabled={!rejectReason.trim() || !!processing}
@@ -360,21 +378,25 @@ export default function CompOff() {
 
       {/* ── Mark Availed modal ── */}
       {availModal && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:999, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <div className="card" style={{ width: 400, padding: 24 }}>
-            <h3 style={{ margin:'0 0 4px', fontSize:16 }}>Mark Comp Off as Availed</h3>
-            <p style={{ fontSize:13, color:'var(--text-secondary)', margin:'0 0 16px' }}>
-              {availModal.employees?.name} — worked on {fmt(availModal.worked_date)}
-            </p>
-            <div className="form-group">
-              <label>Date taken off</label>
-              <input type="date" value={availDate}
-                onChange={e => setAvailDate(e.target.value)} />
-              <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:4 }}>
-                This day will be marked as <strong>CO</strong> in attendance automatically.
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:999, display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
+          <div className="card" style={{ width: 420, padding: 0, overflow:'hidden' }}>
+            <div style={{ padding:'22px 28px 18px', borderBottom:'1px solid var(--border)' }}>
+              <h3 style={{ margin:0, fontSize:17, fontWeight:600 }}>Mark Comp Off as Availed</h3>
+              <p style={{ margin:'4px 0 0', fontSize:13, color:'var(--text-muted)' }}>
+                {availModal.employees?.name} — worked on {fmt(availModal.worked_date)}
+              </p>
+            </div>
+            <div style={{ padding:'24px 28px' }}>
+              <div className="form-group" style={{ margin:0 }}>
+                <label>Date Taken Off</label>
+                <input type="date" value={availDate}
+                  onChange={e => setAvailDate(e.target.value)} />
+                <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:6, lineHeight:1.5 }}>
+                  This day will be marked as <strong>CO</strong> in attendance automatically.
+                </div>
               </div>
             </div>
-            <div style={{ display:'flex', gap:10, justifyContent:'flex-end', marginTop:8 }}>
+            <div style={{ padding:'16px 28px 22px', borderTop:'1px solid var(--border)', display:'flex', gap:10, justifyContent:'flex-end' }}>
               <button className="btn btn-outline" onClick={() => { setAvailModal(null); setAvailDate('') }}>Cancel</button>
               <button className="btn btn-primary"
                 disabled={!availDate || availLoading}
