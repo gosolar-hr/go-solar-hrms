@@ -252,30 +252,42 @@ export default function SiteDetail() {
   const openWhatsApp = (visit) => {
     const phone = (site.contact_phone || '').replace(/\D/g, '')
     if (!phone) {
-      alert('No contact phone number saved for this site.\nPlease add it under the Site Details tab.')
+      setAlert({ type:'error', msg:'No contact phone number saved for this site. Add it under Site Details tab.' })
       return
     }
-    const waPhone    = phone.startsWith('91') ? phone : `91${phone}`
-    const techName   = visit.employees?.name || visit.technician_name || 'our technician'
+    // Ensure country code — default to India (+91)
+    const waPhone    = phone.startsWith('91') && phone.length === 12 ? phone : `91${phone}`
+    const techName   = visit.technician_name || visit.employees?.name || 'our technician'
     const date       = new Date(visit.scheduled_date).toLocaleDateString('en-IN',
                          { weekday:'long', day:'numeric', month:'long', year:'numeric' })
-    const clientName = site.contact_name || site.client_name || 'Sir/Madam'
+    const clientName = site.contact_name || 'Sir/Madam'
     const address    = [site.address, site.city].filter(Boolean).join(', ')
+    const visitNum   = visit.visit_number ? `Visit #${visit.visit_number}` : 'AMC Service Visit'
+
     const message =
 `Dear ${clientName},
 
-This is a reminder that your AMC service visit is scheduled on *${date}*.
+This is a reminder for your *${visitNum}* scheduled on *${date}*.
 
-📍 Site: ${site.client_name}${address ? `\n📌 Address: ${address}` : ''}
+📍 Site: ${site.client_name}${address ? `\n📌 Address: ${address}` : ''}${site.system_size_kw ? `\n⚡ System: ${site.system_size_kw} kW` : ''}
 👷 Technician: ${techName}
 
-Please ensure site access is available at the time of visit.
+Kindly ensure site access is available at the time of visit.
 
 For any queries, feel free to contact us.
 
 Thank you,
 *Go Solar Solutions*`
-    window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(message)}`, '_blank')
+
+    const url = `https://wa.me/${waPhone}?text=${encodeURIComponent(message)}`
+    // Use anchor click to avoid popup blockers
+    const a = document.createElement('a')
+    a.href = url
+    a.target = '_blank'
+    a.rel = 'noopener noreferrer'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
   }
 
   const fmt = (d) => d
