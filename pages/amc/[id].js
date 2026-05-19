@@ -104,8 +104,9 @@ export default function SiteDetail() {
 
   const load = () => {
     if (!id) return
-    const role = document.cookie.split(';').find(c => c.trim().startsWith('hrms_role='))
-    setIsHR((role || '').includes('hr'))
+    const roleCookie = document.cookie.split(';').find(c => c.trim().startsWith('hrms_role='))
+    const roleValue  = roleCookie ? roleCookie.split('=')[1]?.trim() : ''
+    setIsHR(roleValue === 'hr')
     Promise.all([
       fetch(`/api/amc/${id}`).then(r => r.json()),
       fetch('/api/employees').then(r => r.json()),
