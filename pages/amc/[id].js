@@ -851,12 +851,15 @@ Thank you,
                 <div className="form-group">
                   <label>Contact Name</label>
                   <input value={editForm.contact_name}
-                    onChange={e => setEditForm(f => ({ ...f, contact_name: e.target.value }))} />
+                    onChange={e => setEditForm(f => ({ ...f, contact_name: e.target.value }))}
+                    placeholder="e.g. Ramesh Kumar (letters only)" />
+
                 </div>
                 <div className="form-group">
                   <label>Contact Phone</label>
                   <input value={editForm.contact_phone}
-                    onChange={e => setEditForm(f => ({ ...f, contact_phone: e.target.value }))} />
+                    onChange={e => setEditForm(f => ({ ...f, contact_phone: e.target.value }))}
+                    placeholder="e.g. 919876543210 (91 + 10 digits)" />
                 </div>
                 <div className="form-group full">
                   <label>Assign To Technician</label>
