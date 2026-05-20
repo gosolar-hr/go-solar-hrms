@@ -21,7 +21,21 @@ export default function Login() {
   const [show,    setShow]    = useState(false)
   const [ready,   setReady]   = useState(false)
 
-  useEffect(() => { setTimeout(() => setReady(true), 100) }, [])
+  useEffect(() => {
+    const roleCookie = document.cookie
+      .split('; ')
+      .find(c => c.startsWith('hrms_role='))
+      ?.split('=')[1]
+    const sessionCookie = document.cookie
+      .split('; ')
+      .find(c => c.startsWith('hrms_session='))
+      ?.split('=')[1]
+    if (sessionCookie) {
+      router.replace(roleCookie === 'tech' ? '/amc' : '/')
+    } else {
+      setTimeout(() => setReady(true), 100)
+    }
+  }, [])
 
   const onSubmit = async (e) => {
     e.preventDefault()

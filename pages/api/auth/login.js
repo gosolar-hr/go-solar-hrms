@@ -42,8 +42,8 @@ export default async function handler(req, res) {
   // SECURE: HttpOnly, Secure, SameSite=Strict cookies (High #7)
   const isProd = process.env.NODE_ENV === 'production'
   res.setHeader('Set-Cookie', [
-    `hrms_session=${token}; HttpOnly; Path=/; SameSite=Strict; ${isProd ? 'Secure;' : ''} Max-Age=86400`,
-    `hrms_role=${userRole}; Path=/; SameSite=Strict; ${isProd ? 'Secure;' : ''} Max-Age=86400`,
+    `hrms_session=${token}; HttpOnly; Path=/; SameSite=Strict; ${isProd ? 'Secure;' : ''}`,
+    `hrms_role=${userRole}; Path=/; SameSite=Strict; ${isProd ? 'Secure;' : ''}`,
   ])
 
   return res.status(200).json({ success: true, role: userRole, redirect })

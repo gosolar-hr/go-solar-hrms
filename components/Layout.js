@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 const nav = [
   {
@@ -48,6 +48,7 @@ const nav = [
 export default function Layout({ children }) {
   const router   = useRouter()
   const [role, setRole] = useState('hr')
+  const isSigningOut = useRef(false)
 
   useEffect(() => {
     const r = document.cookie
@@ -55,9 +56,22 @@ export default function Layout({ children }) {
       .find(c => c.startsWith('hrms_role='))
       ?.split('=')[1]
     if (r) setRole(r)
+
+    const handleBeforeUnload = (e) => {
+      if (isSigningOut.current) return
+      e.preventDefault()
+      e.returnValue = ''
+      return ''
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
   }, [])
 
   const onLogout = async () => {
+    isSigningOut.current = true
     await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/login')
   }
