@@ -25,7 +25,7 @@ export default async function handler(req, res) {
       pf_applicable, esic_applicable, pension_applicable,
       pan, aadhaar, bank_account,
       ifsc_code, bank_branch, bank_location,
-      uan_number, pf_number, emp_code, work_schedule,
+      uan_number, pf_number, esic_number, emp_code, work_schedule,
       // New fields from master data
       date_of_birth, marital_status, father_husband_name,
       biometric_code, working_location,
@@ -67,6 +67,7 @@ export default async function handler(req, res) {
         bank_location  : bank_location  || null,
         uan_number     : uan_number     || null,
         pf_number      : pf_number      || null,
+        esic_number    : esic_number    || null,
         emp_code       : emp_code       || null,
         // New fields
         date_of_birth          : date_of_birth          || null,
