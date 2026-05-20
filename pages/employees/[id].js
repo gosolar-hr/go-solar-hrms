@@ -562,6 +562,7 @@ export default function EmployeeProfile() {
                 <div className="form-group"><label>Aadhaar Number</label><input name="aadhaar" value={form.aadhaar||''} onChange={onChange} placeholder="123456789012" /></div>
                 <div className="form-group"><label>UAN Number</label><input name="uan_number" value={form.uan_number||''} onChange={onChange} placeholder="100XXXXXXXXX" /></div>
                 <div className="form-group"><label>PF Number</label><input name="pf_number" value={form.pf_number||''} onChange={onChange} placeholder="MH/XXXXX/XXX" /></div>
+                <div className="form-group"><label>ESIC Number</label><input name="esic_number" value={form.esic_number||''} onChange={onChange} placeholder="e.g. 1234567890" /></div>
               </div>
               <div className="flex gap-8 mt-16">
                 <button className="btn btn-primary btn-sm" onClick={() => onSave('Compliance details')} disabled={saving}>{saving?'Saving...':'Save Changes'}</button>
@@ -612,8 +613,9 @@ export default function EmployeeProfile() {
                   {uploadingDoc === 'aadhaar' && <span style={{ fontSize:11, color:'var(--text-muted)' }}>Processing…</span>}
                 </div>
               } highlight={false} />
-              <FieldRow label="UAN Number"  value={emp.uan_number} highlight />
-              <FieldRow label="PF Number"   value={emp.pf_number}  highlight />
+              <FieldRow label="UAN Number"   value={emp.uan_number}  highlight />
+              <FieldRow label="PF Number"    value={emp.pf_number}   highlight />
+              <FieldRow label="ESIC Number"  value={emp.esic_number} highlight />
               <button className="btn btn-outline btn-sm mt-16" onClick={() => setEditing('compliance')}>✏ Edit Compliance Details</button>
             </>
           )}
