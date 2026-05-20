@@ -14,17 +14,24 @@ export async function middleware(request) {
   const isStatic    = pathname.startsWith('/_next') || pathname.startsWith('/favicon')
 
   // Always allow static files, login page, and login API
-  if (isStatic || isLoginPage || isApiAuth) return NextResponse.next()
+  if (isStatic || isApiAuth) return NextResponse.next()
 
   // Not logged in → redirect to login
   if (!token) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    if (isLoginPage) return NextResponse.next()
+    const res = NextResponse.redirect(new URL('/login', request.url))
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
+    return res
   }
 
   try {
-    // Verify Signed JWT (Critical #1)
     const { payload } = await jwtVerify(token, secret)
     const role = payload.role
+
+    // If logged in and visiting login page → redirect to dashboard
+    if (isLoginPage) {
+      return NextResponse.redirect(new URL(role === 'tech' ? '/amc' : '/', request.url))
+    }
 
     // HR-only pages and APIs — technician cannot access
     const isHROnly =
@@ -47,10 +54,21 @@ export async function middleware(request) {
       return NextResponse.redirect(new URL('/amc', request.url))
     }
 
-    return NextResponse.next()
+    // Add no-cache headers to every protected page response
+    // This prevents the browser back button from serving stale cached pages
+    const response = NextResponse.next()
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, private')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
+    return response
+
   } catch (err) {
-    // Invalid token → redirect to login
-    return NextResponse.redirect(new URL('/login', request.url))
+    // Invalid or expired token → clear cookies and redirect to login
+    const res = NextResponse.redirect(new URL('/login', request.url))
+    res.cookies.set('hrms_session', '', { maxAge: 0, path: '/' })
+    res.cookies.set('hrms_role',    '', { maxAge: 0, path: '/' })
+    res.headers.set('Cache-Control', 'no-store')
+    return res
   }
 }
 

@@ -37,14 +37,15 @@ export default async function handler(req, res) {
   }
 
   // Issue Signed JWT (Critical #1)
-  const token = await signJWT({ email, role: userRole })
-
-  // SECURE: HttpOnly, Secure, SameSite=Strict cookies (High #7)
+  const token  = await signJWT({ email, role: userRole })
   const isProd = process.env.NODE_ENV === 'production'
+  const MAX_AGE = 8 * 60 * 60  // 8 hours — matches JWT expiry
+
   res.setHeader('Set-Cookie', [
-    `hrms_session=${token}; HttpOnly; Path=/; SameSite=Strict; ${isProd ? 'Secure;' : ''}`,
-    `hrms_role=${userRole}; Path=/; SameSite=Strict; ${isProd ? 'Secure;' : ''}`,
+    `hrms_session=${token}; HttpOnly; Path=/; SameSite=Strict; Max-Age=${MAX_AGE}; ${isProd ? 'Secure;' : ''}`,
+    `hrms_role=${userRole}; Path=/; SameSite=Strict; Max-Age=${MAX_AGE}; ${isProd ? 'Secure;' : ''}`,
   ])
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
 
   return res.status(200).json({ success: true, role: userRole, redirect })
 }
