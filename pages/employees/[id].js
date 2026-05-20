@@ -72,6 +72,7 @@ export default function EmployeeProfile() {
   const [newAdv,   setNewAdv]   = useState({ total_amount:'', monthly_adjustment:'', advance_date:'', description:'' })
   const [showLoan, setShowLoan] = useState(false)
   const [showAdv,  setShowAdv]  = useState(false)
+  const [uploadingDoc, setUploadingDoc] = useState(null) // 'aadhaar' | 'pan' | null
 
   // Load loans and advances
   const loadLoans = () =>
@@ -129,6 +130,77 @@ export default function EmployeeProfile() {
     setNewAdv({ total_amount:'', monthly_adjustment:'', advance_date:'', description:'' })
     setShowAdv(false)
     loadAdvances()
+  }
+
+  const handleUpload = async (e, docType) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    const mime = (file.type || '').toLowerCase()
+    const isPDF = mime === 'application/pdf'
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf']
+    if (!allowed.includes(mime)) {
+      alert('Only JPEG, PNG, WebP images and PDF documents are accepted.')
+      return
+    }
+
+    const maxBytes = isPDF ? 5 * 1024 * 1024 : 2 * 1024 * 1024
+    if (file.size > maxBytes) {
+      alert(`File is too large. Max limit is ${isPDF ? '5MB' : '2MB'}. Please compress it before uploading.`)
+      return
+    }
+
+    setUploadingDoc(docType)
+    setAlert(null)
+
+    const fd = new FormData()
+    fd.append('employeeId', id)
+    fd.append('docType', docType)
+    fd.append('file', file)
+
+    try {
+      const res = await fetch('/api/employees/upload-doc', {
+        method: 'POST',
+        body: fd
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Upload failed')
+
+      const empRes = await fetch(`/api/employees/${id}`)
+      const empData = await empRes.json()
+      setEmp(empData)
+      setForm(empData)
+      setAlert({ type: 'success', msg: `${docType.toUpperCase() === 'AADHAAR' ? 'Aadhaar' : 'PAN'} card document uploaded successfully.` })
+    } catch (err) {
+      setAlert({ type: 'error', msg: err.message })
+    } finally {
+      setUploadingDoc(null)
+    }
+  }
+
+  const deleteDoc = async (docType) => {
+    if (!confirm(`Are you sure you want to delete the uploaded ${docType.toUpperCase() === 'AADHAAR' ? 'Aadhaar' : 'PAN'} card document?`)) return
+    setUploadingDoc(docType)
+    setAlert(null)
+    try {
+      const res = await fetch('/api/employees/upload-doc', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeId: id, docType })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Delete failed')
+
+      const empRes = await fetch(`/api/employees/${id}`)
+      const empData = await empRes.json()
+      setEmp(empData)
+      setForm(empData)
+      setAlert({ type: 'success', msg: `${docType.toUpperCase() === 'AADHAAR' ? 'Aadhaar' : 'PAN'} card document deleted.` })
+    } catch (err) {
+      setAlert({ type: 'error', msg: err.message })
+    } finally {
+      setUploadingDoc(null)
+    }
   }
 
   const onChange = e => {
@@ -498,8 +570,48 @@ export default function EmployeeProfile() {
             </>
           ) : (
             <>
-              <FieldRow label="PAN Number"  value={emp.pan}        highlight />
-              <FieldRow label="Aadhaar"     value={emp.aadhaar}    highlight />
+              <FieldRow label="PAN Number"  value={
+                <div style={{ display:'flex', alignItems:'center', gap:16, flexWrap:'wrap' }}>
+                  <span style={{ fontWeight:600 }}>{emp.pan || <span style={{ color:'var(--text-muted)', fontStyle:'italic', fontWeight:400 }}>Not provided</span>}</span>
+                  {emp.pan_url ? (
+                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                      <a href={emp.pan_url} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm" style={{ padding:'2px 8px', fontSize:11, display:'inline-flex', alignItems:'center', gap:4, textDecoration:'none', color:'var(--text-secondary)' }}>
+                        📄 View PAN Card
+                      </a>
+                      <button className="btn btn-sm btn-outline" onClick={() => deleteDoc('pan')} disabled={uploadingDoc === 'pan'} style={{ padding:'2px 8px', fontSize:11, color:'#D92D20', borderColor:'#FECDCA' }}>
+                        {uploadingDoc === 'pan' ? 'Deleting…' : '🗑 Delete'}
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="btn btn-outline btn-sm" style={{ padding:'2px 8px', fontSize:11, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4, margin:0 }}>
+                      📤 Upload PAN Card
+                      <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(e) => handleUpload(e, 'pan')} style={{ display:'none' }} disabled={uploadingDoc !== null} />
+                    </label>
+                  )}
+                  {uploadingDoc === 'pan' && <span style={{ fontSize:11, color:'var(--text-muted)' }}>Processing…</span>}
+                </div>
+              } highlight={false} />
+              <FieldRow label="Aadhaar"     value={
+                <div style={{ display:'flex', alignItems:'center', gap:16, flexWrap:'wrap' }}>
+                  <span style={{ fontWeight:600 }}>{emp.aadhaar || <span style={{ color:'var(--text-muted)', fontStyle:'italic', fontWeight:400 }}>Not provided</span>}</span>
+                  {emp.aadhaar_url ? (
+                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                      <a href={emp.aadhaar_url} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm" style={{ padding:'2px 8px', fontSize:11, display:'inline-flex', alignItems:'center', gap:4, textDecoration:'none', color:'var(--text-secondary)' }}>
+                        📄 View Aadhaar Card
+                      </a>
+                      <button className="btn btn-sm btn-outline" onClick={() => deleteDoc('aadhaar')} disabled={uploadingDoc === 'aadhaar'} style={{ padding:'2px 8px', fontSize:11, color:'#D92D20', borderColor:'#FECDCA' }}>
+                        {uploadingDoc === 'aadhaar' ? 'Deleting…' : '🗑 Delete'}
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="btn btn-outline btn-sm" style={{ padding:'2px 8px', fontSize:11, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4, margin:0 }}>
+                      📤 Upload Aadhaar Card
+                      <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(e) => handleUpload(e, 'aadhaar')} style={{ display:'none' }} disabled={uploadingDoc !== null} />
+                    </label>
+                  )}
+                  {uploadingDoc === 'aadhaar' && <span style={{ fontSize:11, color:'var(--text-muted)' }}>Processing…</span>}
+                </div>
+              } highlight={false} />
               <FieldRow label="UAN Number"  value={emp.uan_number} highlight />
               <FieldRow label="PF Number"   value={emp.pf_number}  highlight />
               <button className="btn btn-outline btn-sm mt-16" onClick={() => setEditing('compliance')}>✏ Edit Compliance Details</button>

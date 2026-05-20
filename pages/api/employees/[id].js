@@ -37,6 +37,7 @@ export default async function handler(req, res) {
       nominee_aadhaar, nominee_pan,
       nominee_current_address, nominee_permanent_address,
       current_inhand_salary, hr_remark,
+      aadhaar_url, pan_url,
     } = req.body
 
     const { data, error } = await supabaseAdmin
@@ -92,6 +93,8 @@ export default async function handler(req, res) {
         nominee_permanent_address : nominee_permanent_address || null,
         current_inhand_salary  : current_inhand_salary ? Number(current_inhand_salary) : null,
         hr_remark              : hr_remark              || null,
+        aadhaar_url            : aadhaar_url !== undefined ? aadhaar_url : undefined,
+        pan_url                : pan_url !== undefined ? pan_url : undefined,
       })
       .eq('id', id)
       .select()
