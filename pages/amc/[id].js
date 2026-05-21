@@ -109,7 +109,7 @@ export default function SiteDetail() {
     setIsHR(roleValue === 'hr')
     Promise.all([
       fetch(`/api/amc/${id}`).then(r => r.json()),
-      fetch('/api/employees').then(r => r.json()),
+      fetch('/api/employees').then(r => r.ok ? r.json() : []),  // [] silently if tech
     ]).then(([siteData, empsData]) => {
       setSite(siteData)
       setEditForm({
