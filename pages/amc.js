@@ -44,7 +44,7 @@ export default function AMC() {
     Promise.all([
       fetch('/api/amc/sites').then(r => r.ok ? r.json() : r.json().then(d => { throw new Error(d.error || 'Sites failed') })),
       fetch('/api/amc/alerts').then(r => r.ok ? r.json() : r.json().then(d => { throw new Error(d.error || 'Alerts failed') })),
-      fetch('/api/employees').then(r => r.ok ? r.json() : r.json().then(d => { throw new Error(d.error || 'Employees failed') })),
+      fetch('/api/employees').then(r => r.ok ? r.json() : []),  // returns [] silently if tech (403)
     ]).then(([sitesData, alertsData, empsData]) => {
       setSites(Array.isArray(sitesData) ? sitesData : [])
       setAlerts(alertsData?.alerts || [])
