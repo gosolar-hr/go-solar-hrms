@@ -52,7 +52,9 @@ export default function Login() {
 
     if (res.ok) {
       const data = await res.json()
-      router.push(data.redirect || '/')
+      // Use window.location instead of router.push — ensures the cookie
+      // is fully committed before the next page load hits middleware
+      window.location.href = data.redirect || '/'
     } else {
       const data = await res.json()
       setError(data.error || 'Invalid credentials')
@@ -64,7 +66,6 @@ export default function Login() {
     <>
       <Head>
         <title>Sign In | Go Solar HRMS</title>
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
       </Head>
 
       <style suppressHydrationWarning>{`
