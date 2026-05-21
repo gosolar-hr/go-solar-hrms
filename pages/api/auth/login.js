@@ -18,12 +18,18 @@ export default async function handler(req, res) {
   let redirect      = '/'
 
   if (role === 'hr') {
+    if (!ADMIN_PASSWORD) {
+      console.error('[AUTH ERROR] ADMIN_PASSWORD environment variable is not configured on the server.')
+    }
     if (email === HR_EMAIL && password === ADMIN_PASSWORD) {
       authenticated = true
       userRole      = 'hr'
       redirect      = '/'
     }
   } else if (role === 'technician') {
+    if (!TECH_PASSWORD) {
+      console.error('[AUTH ERROR] TECH_PASSWORD environment variable is not configured on the server.')
+    }
     if (email === TECH_EMAIL && password === TECH_PASSWORD) {
       authenticated = true
       userRole      = 'tech'

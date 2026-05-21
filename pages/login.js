@@ -44,20 +44,31 @@ export default function Login() {
     setLoading(true)
     setError('')
 
-    const res = await fetch('/api/auth/login', {
-      method : 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body   : JSON.stringify({ email, password: pw, role }),
-    })
+    try {
+      const res = await fetch('/api/auth/login', {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify({ email, password: pw, role }),
+      })
 
-    if (res.ok) {
-      const data = await res.json()
-      // Use window.location instead of router.push — ensures the cookie
-      // is fully committed before the next page load hits middleware
-      window.location.href = data.redirect || '/'
-    } else {
-      const data = await res.json()
-      setError(data.error || 'Invalid credentials')
+      if (res.ok) {
+        const data = await res.json()
+        // Use window.location instead of router.push — ensures the cookie
+        // is fully committed before the next page load hits middleware
+        window.location.href = data.redirect || '/'
+      } else {
+        let errorMsg = 'Invalid credentials'
+        try {
+          const data = await res.json()
+          errorMsg = data.error || errorMsg
+        } catch (_) {
+          errorMsg = `Server error (${res.status}). Please check your server logs/environment variables.`
+        }
+        setError(errorMsg)
+        setLoading(false)
+      }
+    } catch (err) {
+      setError(err.message || 'Network error. Please try again.')
       setLoading(false)
     }
   }
