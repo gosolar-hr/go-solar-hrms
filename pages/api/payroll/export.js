@@ -1,7 +1,10 @@
 import { supabaseAdmin } from '../../../lib/supabase'
 import ExcelJS          from 'exceljs'
+import { requireRole } from '../../../lib/requireAuth'
 
 export default async function handler(req, res) {
+  const session = await requireRole(req, res, ['hr'])
+  if (!session) return
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
 
   const { month, year } = req.query

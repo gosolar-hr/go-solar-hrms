@@ -8,12 +8,15 @@ import {
   calculateNetSalary,
   calculateOtherDeductions,
 } from '../../../lib/payroll'
+import { requireRole } from '../../../lib/requireAuth'
 import {
   ensureMonthlyAttendanceDetails,
   refreshAttendanceSummary,
 } from '../../../lib/attendanceUtils'
 
 export default async function handler(req, res) {
+  const session = await requireRole(req, res, ['hr'])
+  if (!session) return
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }

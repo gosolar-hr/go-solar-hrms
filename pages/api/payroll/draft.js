@@ -1,6 +1,9 @@
 import { supabaseAdmin } from '../../../lib/supabase'
+import { requireRole } from '../../../lib/requireAuth'
 
 export default async function handler(req, res) {
+  const session = await requireRole(req, res, ['hr'])
+  if (!session) return
 
   // ─────────────────────────────────────────────────────
   // GET — Load draft for month/year

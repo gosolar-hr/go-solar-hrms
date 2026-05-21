@@ -1,8 +1,11 @@
 import { supabaseAdmin } from '../../../lib/supabase'
 import fs from 'fs'
 import path from 'path'
+import { requireRole } from '../../../lib/requireAuth'
 
 export default async function handler(req, res) {
+  const session = await requireRole(req, res, ['hr'])
+  if (!session) return
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   const { type, employee_id, extra } = req.body

@@ -1,6 +1,9 @@
 import { supabaseAdmin } from '../../../lib/supabase'
+import { requireRole } from '../../../lib/requireAuth'
 
 export default async function handler(req, res) {
+  const session = await requireRole(req, res, ['hr', 'tech'])
+  if (!session) return
 
   // GET — visits with optional filters
   if (req.method === 'GET') {

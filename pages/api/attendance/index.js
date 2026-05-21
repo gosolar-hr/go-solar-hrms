@@ -1,6 +1,9 @@
 import { supabaseAdmin } from '../../../lib/supabase'
+import { requireRole } from '../../../lib/requireAuth'
 
 export default async function handler(req, res) {
+  const session = await requireRole(req, res, ['hr'])
+  if (!session) return
 
   // POST - log or update attendance for a month
   if (req.method === 'POST') {
