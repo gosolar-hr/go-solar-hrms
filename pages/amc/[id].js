@@ -427,16 +427,14 @@ Thank you,
         <div className="card">
           <div className="card-header">
             <span className="card-title">Visit Schedule & History</span>
-            {isHR && (
-              <button className="btn btn-primary btn-sm"
-                onClick={() => setShowAddVisit(s => !s)}>
-                + Schedule Visit
-              </button>
-            )}
+            <button className="btn btn-primary btn-sm"
+              onClick={() => setShowAddVisit(s => !s)}>
+              + Schedule Visit
+            </button>
           </div>
 
-          {/* Add Visit form — HR only */}
-          {isHR && showAddVisit && (
+          {/* Add Visit form */}
+          {showAddVisit && (
             <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--border-light)',
               background:'var(--surface-2)' }}>
               <div style={{ fontWeight:600, fontSize:13, marginBottom:12,
@@ -479,7 +477,7 @@ Thank you,
             {visits.length === 0 ? (
               <div className="empty-state">
                 <strong>No visits scheduled</strong>
-                <p>{isHR ? 'Add a visit using the button above.' : 'No visits have been scheduled yet.'}</p>
+                <p>Add a visit using the button above.</p>
               </div>
             ) : (
               <table>
@@ -814,12 +812,10 @@ Thank you,
           <div style={{ display:'flex', justifyContent:'space-between',
             alignItems:'center', marginBottom:20 }}>
             <span className="card-title">Site Information</span>
-            {isHR && (
-              <button className="btn btn-outline btn-sm"
-                onClick={() => setEditDetails(s => !s)}>
-                {editDetails ? 'Cancel' : '✏ Edit'}
-              </button>
-            )}
+            <button className="btn btn-outline btn-sm"
+              onClick={() => setEditDetails(s => !s)}>
+              {editDetails ? 'Cancel' : '✏ Edit'}
+            </button>
           </div>
 
           {editDetails ? (

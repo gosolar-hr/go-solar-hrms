@@ -102,6 +102,9 @@ export default async function handler(req, res) {
 
   // DELETE — remove a visit (HR only — enforced in UI, double-checked here)
   if (req.method === 'DELETE') {
+    if (session.role !== 'hr') {
+      return res.status(403).json({ error: 'Access forbidden: Only HR is authorized to delete visits.' })
+    }
     const { id } = req.query
     if (!id) return res.status(400).json({ error: 'Visit id required' })
 
