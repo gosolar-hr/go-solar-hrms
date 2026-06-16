@@ -33,10 +33,22 @@ export default async function handler(req, res) {
   const masked = data.map(record => {
     const emp = record.employees
     if (!emp) return record
+
+    const basic = record.basic_salary !== null && record.basic_salary !== undefined ? record.basic_salary : emp.basic_salary
+    const hra = record.hra !== null && record.hra !== undefined ? record.hra : emp.hra
+    const cca = record.cca !== null && record.cca !== undefined ? record.cca : emp.cca
+    const conveyance = record.conveyance !== null && record.conveyance !== undefined ? record.conveyance : emp.conveyance
+    const allowances = record.allowances !== null && record.allowances !== undefined ? record.allowances : emp.allowances
+
     return {
       ...record,
       employees: {
         ...emp,
+        basic_salary: Number(basic),
+        hra: Number(hra),
+        cca: Number(cca),
+        conveyance: Number(conveyance),
+        allowances: Number(allowances),
         pan: emp.pan ? `XXXXX${emp.pan.slice(-4)}` : '—',
         bank_account: emp.bank_account ? `XXXX${emp.bank_account.slice(-4)}` : '—',
         uan_number: emp.uan_number ? `XXXX${emp.uan_number.slice(-4)}` : '—'

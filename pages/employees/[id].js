@@ -64,6 +64,7 @@ export default function EmployeeProfile() {
   const [saving,  setSaving]  = useState(false)
   const [alert,   setAlert]   = useState(null)
   const [loading, setLoading] = useState(true)
+  const [revisions, setRevisions] = useState([])
 
   // Loan & Advance state
   const [loans,    setLoans]    = useState([])
@@ -83,6 +84,14 @@ export default function EmployeeProfile() {
     fetch(`/api/advances?employee_id=${id}`)
       .then(r => r.json()).then(d => setAdvances(Array.isArray(d) ? d : []))
 
+  const loadRevisions = () => {
+    if (!id) return
+    fetch(`/api/employees/${id}/revisions`)
+      .then(r => r.json())
+      .then(d => setRevisions(Array.isArray(d) ? d : []))
+      .catch(err => console.error('Failed to load salary revisions', err))
+  }
+
   useEffect(() => {
     if (!id) return
     fetch(`/api/employees/${id}`)
@@ -94,6 +103,7 @@ export default function EmployeeProfile() {
       })
     loadLoans()
     loadAdvances()
+    loadRevisions()
   }, [id])
 
   const addLoan = async () => {
@@ -223,6 +233,9 @@ export default function EmployeeProfile() {
     setForm(data)
     setEditing(null)
     setAlert({ type:'success', msg: `${section} updated successfully.` })
+    if (section.toLowerCase().includes('salary')) {
+      loadRevisions()
+    }
   }
 
   const onDeactivate = async () => {
@@ -506,6 +519,10 @@ export default function EmployeeProfile() {
                 <div className="form-group"><label>Conveyance (₹)</label><input name="conveyance" type="number" value={form.conveyance||''} onChange={onChange} /></div>
                 <div className="form-group full"><label>Other Allowances (₹)</label><input name="allowances" type="number" value={form.allowances||''} onChange={onChange} /></div>
                 <div className="form-group full">
+                  <label>Effective Date *</label>
+                  <input name="effective_date" type="date" value={form.effective_date||''} onChange={onChange} required />
+                </div>
+                <div className="form-group full">
                   <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                     <input type="checkbox" name="pf_applicable" id="pf_applicable" checked={form.pf_applicable ?? true} onChange={onChange} style={{ width:16, height:16, accentColor:'var(--accent)' }} />
                     <label htmlFor="pf_applicable" style={{ margin:0, cursor:'pointer', fontSize:13, fontWeight:500 }}>PF Applicable (uncheck if Form 11 opt-out)</label>
@@ -549,7 +566,36 @@ export default function EmployeeProfile() {
               <FieldRow label="PF Applicable"   value={emp.pf_applicable ? 'Yes — Enrolled' : 'No — Form 11 opt-out'} />
               <FieldRow label="ESIC Applicable"  value={emp.esic_applicable ? 'Yes — Enrolled' : 'No — Opted out'} />
               <FieldRow label="Pension (EPS)"    value={emp.pension_applicable ? 'Yes — EPS enrolled' : 'No — Not enrolled'} />
-              <button className="btn btn-outline btn-sm mt-16" onClick={() => setEditing('salary')}>✏ Edit Salary Components</button>
+              <button className="btn btn-outline btn-sm mt-16" onClick={() => { setEditing('salary'); setForm(f => ({ ...f, effective_date: new Date().toISOString().split('T')[0] })) }}>✏ Edit Salary Components</button>
+
+              {revisions && revisions.length > 0 && (
+                <div style={{ marginTop: 24, borderTop: '1px dashed var(--border)', paddingTop: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+                    Salary Revision History
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {revisions.map((rev) => {
+                      const total = Number(rev.basic_salary || 0) + Number(rev.hra || 0) + Number(rev.cca || 0) + Number(rev.conveyance || 0) + Number(rev.allowances || 0)
+                      return (
+                        <div key={rev.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface-light, #fafafa)', border: '1px solid var(--border-light, #eaeaea)', borderRadius: 8, padding: '10px 14px', fontSize: 12.5 }}>
+                          <div>
+                            <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{fmt(total)}</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                              Basic: {fmt(rev.basic_salary)} · HRA: {fmt(rev.hra)} · Allowances: {fmt(rev.allowances)}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontWeight: 600, color: 'var(--accent)', fontSize: 11 }}>Effective From</div>
+                            <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
+                              {new Date(rev.effective_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </Section>

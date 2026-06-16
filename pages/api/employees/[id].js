@@ -21,6 +21,13 @@ export default async function handler(req, res) {
 
   // PUT — update employee
   if (req.method === 'PUT') {
+    // Fetch current employee details to check for salary updates
+    const { data: currentEmp } = await supabaseAdmin
+      .from('employees')
+      .select('basic_salary, hra, cca, conveyance, allowances')
+      .eq('id', id)
+      .single()
+
     const {
       name, email, phone, date_of_joining,
       designation, department, gender,
@@ -41,6 +48,7 @@ export default async function handler(req, res) {
       nominee_current_address, nominee_permanent_address,
       current_inhand_salary, hr_remark,
       aadhaar_url, pan_url,
+      effective_date,
     } = req.body
 
     const { data, error } = await supabaseAdmin
@@ -105,6 +113,31 @@ export default async function handler(req, res) {
       .single()
 
     if (error) return res.status(500).json({ error: error.message })
+
+    // Check if salary components actually changed, and log a revision if so
+    const hasSalaryChange =
+      currentEmp &&
+      (Number(currentEmp.basic_salary) !== Number(basic_salary) ||
+       Number(currentEmp.hra) !== Number(hra) ||
+       Number(currentEmp.cca) !== Number(cca) ||
+       Number(currentEmp.conveyance) !== Number(conveyance) ||
+       Number(currentEmp.allowances) !== Number(allowances));
+
+    if (hasSalaryChange) {
+      const effDate = effective_date || new Date().toISOString().split('T')[0];
+      await supabaseAdmin
+        .from('salary_revisions')
+        .upsert({
+          employee_id: id,
+          basic_salary: Number(basic_salary),
+          hra: Number(hra) || 0,
+          cca: Number(cca) || 0,
+          conveyance: Number(conveyance) || 0,
+          allowances: Number(allowances) || 0,
+          effective_date: effDate
+        }, { onConflict: 'employee_id,effective_date' });
+    }
+
     return res.status(200).json(data)
   }
 

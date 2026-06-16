@@ -112,6 +112,22 @@ export default async function handler(req, res) {
     lateByEmp[d.employee_id].push(Number(d.salary_cut))
   })
 
+  // Fetch active salary revisions up to the end of the run month
+  let allRevisions = []
+  try {
+    const runMonthEnd = `${year}-${String(month).padStart(2,'0')}-${lastDay}`
+    const { data: revs, error: revsErr } = await supabaseAdmin
+      .from('salary_revisions')
+      .select('*')
+      .lte('effective_date', runMonthEnd)
+      .order('effective_date', { ascending: false })
+    if (!revsErr && revs) {
+      allRevisions = revs
+    }
+  } catch (e) {
+    console.error('Failed to fetch salary revisions:', e)
+  }
+
   // ── STEP 6: Calculate payroll for each employee ───────
   const payrollRows = []
   const results     = []
@@ -127,9 +143,23 @@ export default async function handler(req, res) {
     const loan          = Number(draft.loan           || 0)
     const advance       = Number(draft.advance        || 0)
 
-    const totalCTC = Number(emp.basic_salary||0) + Number(emp.hra||0) +
-                     Number(emp.cca||0) + Number(emp.conveyance||0) +
-                     Number(emp.allowances||0)
+    const activeRevision = (allRevisions || []).find(r => r.employee_id === emp.id)
+    const activeBasic = activeRevision ? Number(activeRevision.basic_salary) : Number(emp.basic_salary || 0)
+    const activeHRA   = activeRevision ? Number(activeRevision.hra) : Number(emp.hra || 0)
+    const activeCCA   = activeRevision ? Number(activeRevision.cca) : Number(emp.cca || 0)
+    const activeConv  = activeRevision ? Number(activeRevision.conveyance) : Number(emp.conveyance || 0)
+    const activeAllow = activeRevision ? Number(activeRevision.allowances) : Number(emp.allowances || 0)
+
+    const activeEmp = {
+      ...emp,
+      basic_salary: activeBasic,
+      hra: activeHRA,
+      cca: activeCCA,
+      conveyance: activeConv,
+      allowances: activeAllow
+    }
+
+    const totalCTC = activeBasic + activeHRA + activeCCA + activeConv + activeAllow
     
     // HIGH #11: Use actual days in month
     const daysInMonth = new Date(year, month, 0).getDate()
@@ -142,26 +172,26 @@ export default async function handler(req, res) {
     ) / 100
 
     // Overtime — pass month/year context
-    const { overtimeAmount, hourlyRate } = calculateOvertime({ ...emp, payrollMonth: month, payrollYear: year }, overtimeHours)
+    const { overtimeAmount, hourlyRate } = calculateOvertime({ ...activeEmp, payrollMonth: month, payrollYear: year }, overtimeHours)
 
     // Gross Salary (Deduction based)
     const { gross, earnedCTC, lwpDeduction } = calculateGrossSalary(
-      emp, attendance,
+      activeEmp, attendance,
       lateDeduction,
       incentive, overtimeAmount,
       month, year
     )
 
     const earnedBasic = totalCTC > 0
-      ? Math.round(Number(emp.basic_salary || 0) * (earnedCTC / totalCTC))
+      ? Math.round(activeBasic * (earnedCTC / totalCTC))
       : 0
 
-    const pf   = calculatePF(emp, earnedBasic)
-    const esic = calculateESIC(emp, gross, earnedCTC)
-    const pt   = calculatePT(gross, month, emp.gender)
+    const pf   = calculatePF(activeEmp, earnedBasic)
+    const esic = calculateESIC(activeEmp, gross, earnedCTC)
+    const pt   = calculatePT(gross, month, activeEmp.gender)
     
     // Display-only deductions
-    const otherDed = calculateOtherDeductions(emp, attendance, lateDeduction)
+    const otherDed = calculateOtherDeductions(activeEmp, attendance, lateDeduction)
 
     const net = calculateNetSalary({
       gross,
@@ -189,6 +219,11 @@ export default async function handler(req, res) {
       overtime_hours : overtimeHours,
       overtime_amount: overtimeAmount,
       net_salary     : net,
+      basic_salary   : activeBasic,
+      hra            : activeHRA,
+      cca            : activeCCA,
+      conveyance     : activeConv,
+      allowances     : activeAllow,
     }
 
     payrollRows.push(row)
