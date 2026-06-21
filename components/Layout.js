@@ -142,7 +142,7 @@ export default function Layout({ children }) {
           </button>
           <div style={{ fontSize:10, color:'var(--text-muted)', textAlign:'center', lineHeight:1.6 }}>
             HRMS PHASE 3 · VERSION 1<br/>
-            Powered by <span style={{ color:'var(--accent)', fontWeight:600 }}>Softsync Solutions</span>
+            Powered by <span style={{ background:'linear-gradient(135deg, #2563eb 0%, #00d2ff 100%)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', fontWeight:700, display:'inline-block' }}>SoftSync Lab</span>
           </div>
         </div>
       </aside>

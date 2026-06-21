@@ -590,7 +590,7 @@ export default function Login() {
             <div className="version">
               <div style={{ marginBottom: 4, opacity: 0.6 }}>HRMS PHASE 3 · VERSION 1</div>
               <div style={{ color: '#101828', fontWeight: 600 }}>
-                Powered by <span style={{ color: '#F97316' }}>Softsync Solutions</span>
+                Powered by <span style={{ background: 'linear-gradient(135deg, #2563eb 0%, #00d2ff 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 700, display: 'inline-block' }}>SoftSync Lab</span>
               </div>
             </div>
           </div>

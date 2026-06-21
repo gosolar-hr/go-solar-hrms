@@ -139,7 +139,7 @@ export default async function handler(req, res) {
           padding:18px 32px; text-align:center; border-top:1px solid #E4E7EC;">
           <p style="margin:0; font-size:12px; color:#98A2B3; line-height:1.6;">
             This is an automated reminder from <strong>Go Solar HRMS</strong><br>
-            Powered by Softsync Solutions
+            Powered by SoftSync Lab
           </p>
         </div>
 
