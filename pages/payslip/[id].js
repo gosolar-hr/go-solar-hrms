@@ -71,10 +71,10 @@ export default function Payslip() {
   const advance         = Number(data.advance           || 0)
   const incentive       = Number(data.incentive         || 0)
   const otherDeductions = Number(data.other_deductions  || 0)
-  const totalDeduct     = pf + esic + pt + tds + loan + advance + otherDeductions
-  const netSalary       = Number(data.net_salary)
+  
   const overtimeAmount  = Number(data.overtime_amount   || 0)
   const overtimeHours   = Number(data.overtime_hours    || 0)
+  const netSalary       = Number(data.net_salary)
 
   // Attendance
   const rawPresentDays  = data.present_days || 0
@@ -88,16 +88,10 @@ export default function Payslip() {
 
   const lop = Math.max(0, WORKING_DAYS - presentDays)
 
-  // Prorated actual per component
-  // HIGH #7: Exclude OT and Incentive from ratio calculation to prevent inflation
+  // Prorated actual per component (to get ratio / absent deduction)
   const earnedCTCComponents = actualGross - overtimeAmount - incentive
-  const ratio = fullGross > 0 ? earnedCTCComponents / fullGross : 0
-  
-  const actualBasic = Math.round(fullBasic      * ratio)
-  const actualHRA   = Math.round(fullHRA        * ratio)
-  const actualCCA   = Math.round(fullCCA        * ratio)
-  const actualConv  = Math.round(fullConv       * ratio)
-  const actualAllow = Math.round(fullAllowances * ratio)
+  const absentDeduction = Math.round(Math.max(0, fullGross - earnedCTCComponents) * 100) / 100
+  const totalDeduct     = pf + esic + pt + tds + loan + advance + otherDeductions + absentDeduction
 
   const fmt0 = n => Number(n).toLocaleString('en-IN')
 
@@ -119,13 +113,13 @@ export default function Payslip() {
     return result.trim() + ' Only'
   }
 
-  // Earnings rows — only show non-zero rows
+  // Earnings rows — show full values under actual, as LWP is shown as an explicit deduction
   const earnings = [
-    { label: 'BASIC',                  full: fullBasic,      actual: actualBasic  },
-    { label: 'HRA',                    full: fullHRA,        actual: actualHRA    },
-    { label: 'CCA',                    full: fullCCA,        actual: actualCCA    },
-    { label: 'CONVEYANCE',             full: fullConv,       actual: actualConv   },
-    { label: 'OTHER ALLOWANCES',       full: fullAllowances, actual: actualAllow  },
+    { label: 'BASIC',                  full: fullBasic,      actual: fullBasic     },
+    { label: 'HRA',                    full: fullHRA,        actual: fullHRA       },
+    { label: 'CCA',                    full: fullCCA,        actual: fullCCA       },
+    { label: 'CONVEYANCE',             full: fullConv,       actual: fullConv      },
+    { label: 'OTHER ALLOWANCES',       full: fullAllowances, actual: fullAllowances },
     ...(overtimeAmount > 0 ? [{
       label: `OVERTIME (${overtimeHours} HRS)`, full: overtimeAmount, actual: overtimeAmount,
     }] : []),
@@ -140,6 +134,7 @@ export default function Payslip() {
     { label: 'ESIC',                         amount: esic           },
     { label: 'PROFESSIONAL TAX',             amount: pt             },
     { label: 'INCOME TAX (TDS)',             amount: tds            },
+    { label: 'ABSENT DEDUCTION',             amount: absentDeduction },
     { label: 'LATE MARK DEDUCTION',          amount: otherDeductions },
     { label: 'LOAN RECOVERY',               amount: loan           },
     { label: 'ADVANCE RECOVERY',            amount: advance        },
@@ -430,7 +425,7 @@ export default function Payslip() {
           </div>
           <div className="day-cell">
             <div className="day-lbl">Days in Month</div>
-            <div className="day-val">{WORKING_DAYS}</div>
+            <div className="day-val">{daysInMonth}</div>
           </div>
         </div>
 
@@ -465,7 +460,7 @@ export default function Payslip() {
             <tr className="total-row">
               <td>Total Earnings: INR.</td>
               <td className="right">{fmt0(fullGross)}</td>
-              <td className="right">{fmt0(actualGross)}</td>
+              <td className="right">{fmt0(fullGross + overtimeAmount + incentive)}</td>
               <td className="divider-col"></td>
               <td>Total Deductions: INR.</td>
               <td className="right">{fmt0(totalDeduct)}</td>
