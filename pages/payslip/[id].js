@@ -140,7 +140,7 @@ export default function Payslip() {
     { label: 'ESIC',                         amount: esic           },
     { label: 'PROFESSIONAL TAX',             amount: pt             },
     { label: 'INCOME TAX (TDS)',             amount: tds            },
-    { label: 'OTHER DEDUCTIONS (ABSENT/LATE)', amount: otherDeductions },
+    { label: 'LATE MARK DEDUCTION',          amount: otherDeductions },
     { label: 'LOAN RECOVERY',               amount: loan           },
     { label: 'ADVANCE RECOVERY',            amount: advance        },
   ].filter(d => d.amount > 0)
@@ -229,13 +229,13 @@ export default function Payslip() {
           padding: 5px 10px;
           font-size: 11.5px;
           vertical-align: top;
-          border: 1px solid #ccc;
+          border: 1px solid #555;
         }
         .info-label {
-          font-weight: 600;
+          font-weight: 700;
           white-space: nowrap;
           width: 130px;
-          color: #222;
+          color: #000;
         }
         .info-value {
           color: #000;
@@ -283,15 +283,17 @@ export default function Payslip() {
         }
         .salary-table th.left { text-align: left; }
         .salary-table td {
-          border: 1px solid #ccc;
+          border: 1px solid #555;
           padding: 6px 10px;
           font-size: 11.5px;
           vertical-align: middle;
         }
         .salary-table td.right {
           text-align: right;
-          font-family: 'Courier New', monospace;
+          font-family: Arial, sans-serif;
+          font-weight: bold;
           font-size: 11.5px;
+          color: #000;
         }
         .salary-table tr.total-row td {
           background: #f0f0f0;
@@ -326,7 +328,7 @@ export default function Payslip() {
           font-size: 22px;
           font-weight: 700;
           color: #000;
-          font-family: 'Courier New', monospace;
+          font-family: Arial, sans-serif;
           margin-top: 3px;
         }
         .net-words {

@@ -22,6 +22,7 @@ ALTER TABLE payroll ADD COLUMN IF NOT EXISTS hra          NUMERIC(10,2);
 ALTER TABLE payroll ADD COLUMN IF NOT EXISTS cca          NUMERIC(10,2);
 ALTER TABLE payroll ADD COLUMN IF NOT EXISTS conveyance   NUMERIC(10,2);
 ALTER TABLE payroll ADD COLUMN IF NOT EXISTS allowances   NUMERIC(10,2);
+ALTER TABLE payroll ADD COLUMN IF NOT EXISTS other_deductions NUMERIC(10,2) DEFAULT 0;
 
 -- 3. Populate initial revisions from existing employees' current values
 INSERT INTO salary_revisions (employee_id, basic_salary, hra, cca, conveyance, allowances, effective_date)

@@ -48,6 +48,7 @@ CREATE TABLE payroll (
   esic_deduction  NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (esic_deduction >= 0),
   pt_deduction    NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (pt_deduction >= 0),
   tds_deduction   NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (tds_deduction >= 0),
+  other_deductions NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (other_deductions >= 0),
   net_salary      NUMERIC(10,2) NOT NULL CHECK (net_salary >= 0),
   created_at      TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
   CONSTRAINT unique_payroll UNIQUE (employee_id, month, year)

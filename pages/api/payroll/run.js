@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const { month, year } = req.body
+  const { month, year, late_mark_slab } = req.body
 
   if (!month || !year) {
     return res.status(400).json({ error: 'month and year required' })
@@ -165,11 +165,16 @@ export default async function handler(req, res) {
     const daysInMonth = new Date(year, month, 0).getDate()
     const perDay   = totalCTC / daysInMonth
 
-    // Late deduction from actual per-day slabs
+    // Late mark deduction: use daily slabs if present, otherwise fall back to count * slab
     const empLateSlabs = lateByEmp[emp.id] || []
-    const lateDeduction = Math.round(
-      empLateSlabs.reduce((sum, slab) => sum + (perDay * slab), 0) * 100
-    ) / 100
+    let lateDeduction = 0
+    if (empLateSlabs.length > 0) {
+      lateDeduction = empLateSlabs.reduce((sum, slab) => sum + (perDay * slab), 0)
+    } else if (attendance.late_marks > 0) {
+      const slabFraction = (late_mark_slab !== undefined ? Number(late_mark_slab) : 50) / 100
+      lateDeduction = (attendance.late_marks || 0) * perDay * slabFraction
+    }
+    lateDeduction = Math.round(lateDeduction * 100) / 100
 
     // Overtime — pass month/year context
     const { overtimeAmount, hourlyRate } = calculateOvertime({ ...activeEmp, payrollMonth: month, payrollYear: year }, overtimeHours)
