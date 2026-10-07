@@ -18,9 +18,10 @@ export default function Employees() {
   const [loading,   setLoading]   = useState(false)
   const [alert,     setAlert]     = useState(null)
   const [search,    setSearch]    = useState('')
+  const [tab,       setTab]       = useState('all')   // all | active | inactive
 
   const load = () =>
-    fetch('/api/employees').then(r => r.json())
+    fetch('/api/employees?status=all').then(r => r.json())
       .then(d => setEmployees(Array.isArray(d) ? d : []))
 
   useEffect(() => { load() }, [])
@@ -57,21 +58,39 @@ export default function Employees() {
 
   const fmt = n => '₹' + Number(n||0).toLocaleString('en-IN')
 
-  const filtered = employees.filter(e =>
-    e.name?.toLowerCase().includes(search.toLowerCase()) ||
-    e.emp_code?.includes(search) ||
-    e.department?.toLowerCase().includes(search.toLowerCase()) ||
-    e.designation?.toLowerCase().includes(search.toLowerCase())
-  )
+  const activeCount   = employees.filter(e => e.is_active).length
+  const inactiveCount = employees.length - activeCount
+
+  const filtered = employees.filter(e => {
+    if (tab === 'active'   && !e.is_active) return false
+    if (tab === 'inactive' &&  e.is_active) return false
+    return (
+      e.name?.toLowerCase().includes(search.toLowerCase()) ||
+      e.emp_code?.includes(search) ||
+      e.department?.toLowerCase().includes(search.toLowerCase()) ||
+      e.designation?.toLowerCase().includes(search.toLowerCase())
+    )
+  })
 
   return (
     <Layout>
       <div className="page-header flex items-center justify-between">
         <div>
           <h1 className="page-title">Employees</h1>
-          <p className="page-sub">{employees.length} team members</p>
+          <p className="page-sub">
+            {activeCount} active{inactiveCount > 0 ? ` · ${inactiveCount} deactivated` : ''} team members
+          </p>
         </div>
         <div className="flex gap-8 items-center">
+          <div className="flex gap-4">
+            {[['all','All'],['active','Active'],['inactive','Deactivated']].map(([key, label]) => (
+              <button key={key}
+                onClick={() => setTab(key)}
+                className={`btn btn-sm ${tab === key ? 'btn-primary' : 'btn-outline'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
           <input
             placeholder="Search name, code, department..."
             value={search}
@@ -229,6 +248,8 @@ export default function Employees() {
                   <th>Emp No</th>
                   <th>Name</th>
                   <th>Department</th>
+                  <th>Status</th>
+                  <th>Exit Date</th>
                   <th>Basic</th>
                   <th>HRA</th>
                   <th>CCA</th>
@@ -242,7 +263,11 @@ export default function Employees() {
               </thead>
               <tbody>
                 {filtered.map(e => (
-                  <tr key={e.id}>
+                  <tr key={e.id}
+                    style={{
+                      opacity     : e.is_active ? 1 : 0.65,
+                      background  : e.is_active ? '' : '#F8F9FB',
+                    }}>
                     <td>
                       <span className="badge badge-gray">{e.emp_code || '—'}</span>
                     </td>
@@ -261,6 +286,12 @@ export default function Employees() {
                     <td>
                       <span className="badge badge-gray">{e.department || '—'}</span>
                     </td>
+                    <td>
+                      <span className={`badge ${e.is_active ? 'badge-green' : 'badge-red'}`}>
+                        {e.is_active ? 'Active' : 'Deactivated'}
+                      </span>
+                    </td>
+                    <td className="mono">{e.date_of_exit || '—'}</td>
                     <td className="mono">{fmt(e.basic_salary)}</td>
                     <td className="mono">{fmt(e.hra)}</td>
                     <td className="mono">{fmt(e.cca || 0)}</td>
