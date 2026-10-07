@@ -192,12 +192,13 @@ export default function Attendance() {
   }
 
   // FIX: updateDay now shows save confirmation tick
-  const updateDay = async (date, field, value) => {
+  // extra — optional extra fields to save together (e.g. remark set with status)
+  const updateDay = async (date, field, value, extra = {}) => {
     const current = calData[date] || { status: null, late_slab: 0, remark: '' }
 
     // Normalize status when saving manually
     const normalizedValue = field === 'status' ? normalizeStatus(value) : value
-    const updated = { ...current, [field]: normalizedValue }
+    const updated = { ...current, [field]: normalizedValue, ...extra }
 
     setCalData(prev => ({ ...prev, [date]: updated }))
 
@@ -393,12 +394,21 @@ export default function Attendance() {
       empSchedule === '6day' ? dow === 0 :
       (dow === 0 || isNthSaturday(date, dow, [2, 4]))
 
-    if (isWeekOff || isHoliday) return
+    const current = calData[date]?.status || (isHoliday ? 'H' : null)
 
-    const current  = calData[date]?.status || null
-    const editable = ['P', 'MO', 'AO', 'A', 'PL']
+    // Week offs stay locked. A global holiday is locked UNTIL HR overrides it.
+    if (isWeekOff || (isHoliday && current === 'H')) return
+
+    const editable = ['P', 'MO', 'AO', 'A', 'PL', 'H']
     const idx      = editable.indexOf(current)
     const next     = editable[(idx + 1) % editable.length]
+
+    // Setting 'H' here applies to THIS employee only — global list unchanged
+    if (next === 'H' && current !== 'H') {
+      const empName = selectedEmployee?.name || 'this employee'
+      if (!confirm(`Mark ${date} as a Holiday for ${empName} only?\nThe global holiday list stays unchanged.`)) return
+    }
+
     updateDay(date, 'status', next)
   }
 
@@ -773,7 +783,9 @@ export default function Attendance() {
                       (dow === 0 || isNthSaturday(date, dow, [2,4]))
 
                     const isPreJoin = isBeforeJoining(date)
-                    const isLocked  = isWeekOff || isHol || isPreJoin
+                    // Holiday cell is locked only while it is still 'H'.
+                    // Once HR overrides it (P / A / PL ...) it becomes a normal editable day.
+                    const isLocked  = isWeekOff || (isHol && (status || 'H') === 'H') || isPreJoin
                     const _today    = new Date()
                     const isToday   = date === `${_today.getFullYear()}-${String(_today.getMonth()+1).padStart(2,'0')}-${String(_today.getDate()).padStart(2,'0')}`
                     const isSaved   = savedDate === date
@@ -819,7 +831,7 @@ export default function Attendance() {
                         {status && !isLocked && (
                           <div style={{
                             fontSize  : 10,
-                            fontWeight: 700,
+                            fontWeight : 700,
                             color     : cfg.color,
                             lineHeight: 1.2,
                           }}>
@@ -868,6 +880,13 @@ export default function Attendance() {
                             {isPreJoin ? 'N/A' : isHol ? 'H' : 'WO'}
                           </div>
                         )}
+
+                        {/* Overridden holiday — worked on a holiday for THIS employee only */}
+                        {isHol && !isLocked && !isPreJoin && (
+                          <div style={{ fontSize:9, color:'#F97316', marginTop:2, fontWeight:700 }}>
+                            OVERRIDE
+                          </div>
+                        )}
                       </div>
                     )
                   })}
@@ -899,6 +918,111 @@ export default function Attendance() {
                   )
                 })}
               </div>
+            </div>
+          </div>
+
+          {/* Holiday override — applies to the selected employee ONLY */}
+          <div className="card" style={{ marginTop:16 }}>
+            <div className="card-header">
+              <span className="card-title">Holiday Override</span>
+              <span className="text-muted">
+                Applies to {selectedEmployee?.name || 'this employee'} only — the global holiday list stays unchanged
+              </span>
+            </div>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Day</th>
+                    <th>Global Holiday</th>
+                    <th>Status for this employee</th>
+                    <th>Remark / Reason</th>
+                    <th style={{ width:80 }}>Saved</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    const overrideDays = days.filter(({ date }) => {
+                      const isGlobalHol = holidays.some(h => h.date === date)
+                      return isGlobalHol || calData[date]?.status === 'H'
+                    })
+
+                    if (overrideDays.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={6} style={{ textAlign:'center', color:'var(--text-muted)', padding:16 }}>
+                            No holidays in {MONTHS[month-1]} {year} for this employee.
+                          </td>
+                        </tr>
+                      )
+                    }
+
+                    return overrideDays.map(({ date, dow }) => {
+                      const data      = calData[date] || {}
+                      const status    = data.status || 'H'
+                      const globalHol = holidays.find(h => h.date === date)
+                      const remark    = data.remark || ''
+                      const isSaving  = saving === date
+                      const isSaved   = savedDate === date
+
+                      const onStatusChange = e => {
+                        const val = e.target.value
+                        let extra = {}
+                        if (val !== 'H' && globalHol && !remark) {
+                          extra = { remark: 'Worked on holiday — override' }
+                        } else if (val === 'H' && !globalHol && !remark) {
+                          extra = { remark: `Personal holiday for ${selectedEmployee?.name || ''}` }
+                        }
+                        updateDay(date, 'status', val, extra)
+                      }
+
+                      return (
+                        <tr key={date} style={{
+                          background: isSaved ? '#F6FEF9' : isSaving ? '#EFF8FF' : ''
+                        }}>
+                          <td style={{ fontFamily:'DM Mono,monospace', fontSize:13 }}>{date}</td>
+                          <td style={{ color:'var(--text-muted)', fontSize:12 }}>{DAYS_LABEL[dow]}</td>
+                          <td>
+                            <span className="badge badge-gray" style={{ maxWidth:220, overflow:'hidden',
+                              textOverflow:'ellipsis', whiteSpace:'nowrap', display:'inline-block' }}>
+                              {globalHol ? globalHol.name : 'Personal — this employee'}
+                            </span>
+                          </td>
+                          <td>
+                            <select
+                              value={status}
+                              onChange={onStatusChange}
+                              style={{ width:260, height:32, fontSize:12,
+                                borderColor: isSaved ? '#A9EFC5' : '' }}
+                            >
+                              {['H','P','PL','MO','AO','A'].map(s => (
+                                <option key={s} value={s}>{s} — {STATUS_CONFIG[s].label}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td>
+                            <input
+                              value={remark}
+                              onChange={e => updateDay(date, 'remark', e.target.value)}
+                              placeholder="Add remark..."
+                              style={{ width:'100%', minWidth:180 }}
+                            />
+                          </td>
+                          <td style={{ textAlign:'center' }}>
+                            {isSaving && (
+                              <span style={{ fontSize:11, color:'#2E90FA' }}>Saving...</span>
+                            )}
+                            {isSaved && !isSaving && (
+                              <span style={{ fontSize:11, color:'#12B76A', fontWeight:700 }}>✓</span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })
+                  })()}
+                </tbody>
+              </table>
             </div>
           </div>
 
