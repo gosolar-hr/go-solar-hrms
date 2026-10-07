@@ -6,11 +6,21 @@ export default async function handler(req, res) {
   if (!session) return
 
   if (req.method === 'GET') {
-    const { data, error } = await supabaseAdmin
+    const { status } = req.query
+
+    let query = supabaseAdmin
       .from('employees')
       .select('*')
-      .eq('is_active', true)        // ← only active employees
-      .order('emp_code')
+
+    if (status === 'all') {
+      // ← active + deactivated (used by Employee section)
+    } else if (status === 'inactive') {
+      query = query.eq('is_active', false)
+    } else {
+      query = query.eq('is_active', true)   // ← default: only active (payroll / attendance / letters)
+    }
+
+    const { data, error } = await query.order('emp_code')
     if (error) return res.status(500).json({ error: error.message })
     return res.status(200).json(data)
   }
