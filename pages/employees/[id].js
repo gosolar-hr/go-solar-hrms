@@ -240,12 +240,30 @@ export default function EmployeeProfile() {
 
   const onDeactivate = async () => {
     if (!confirm(`Are you sure you want to deactivate ${emp.name}? They will be excluded from payroll.`)) return
+    const date_of_exit = prompt(`Last working day for ${emp.name} (YYYY-MM-DD):`,
+      new Date().toISOString().split('T')[0])
+    if (!date_of_exit) return
+    const exit_reason = prompt('Reason for leaving (optional):') || null
     const res = await fetch(`/api/employees/${id}`, {
       method  : 'PATCH',
       headers : { 'Content-Type': 'application/json' },
-      body    : JSON.stringify({ is_active: false }),
+      body    : JSON.stringify({ is_active: false, date_of_exit, exit_reason }),
     })
     if (res.ok) router.push('/employees')
+  }
+
+  const onReactivate = async () => {
+    if (!confirm(`Reactivate ${emp.name}? They will be included in payroll again.`)) return
+    const res = await fetch(`/api/employees/${id}`, {
+      method  : 'PATCH',
+      headers : { 'Content-Type': 'application/json' },
+      body    : JSON.stringify({ is_active: true }),
+    })
+    if (!res.ok) return
+    const data = await res.json()
+    setEmp(data)
+    setForm(data)
+    setAlert({ type:'success', msg: `${emp.name} reactivated successfully.` })
   }
 
   const fmt = n => '₹' + Number(n || 0).toLocaleString('en-IN')
@@ -311,8 +329,14 @@ export default function EmployeeProfile() {
               <div style={{ display:'flex', gap:8, marginTop:8 }}>
                 <span className="badge badge-gray">{emp.emp_code || 'No Code'}</span>
                 <span className={`badge ${emp.is_active ? 'badge-green' : 'badge-red'}`}>
-                  {emp.is_active ? 'Active' : 'Inactive'}
+                  {emp.is_active ? 'Active' : 'Deactivated'}
                 </span>
+                {!emp.is_active && emp.date_of_exit && (
+                  <span className="badge badge-gray">Left: {emp.date_of_exit}</span>
+                )}
+                {!emp.is_active && emp.exit_reason && (
+                  <span className="badge badge-gray">{emp.exit_reason}</span>
+                )}
                 <span className={`badge ${emp.pf_applicable ? 'badge-orange' : 'badge-gray'}`}>
                   {emp.pf_applicable ? 'PF Enrolled' : 'PF Opt-out'}
                 </span>
@@ -341,11 +365,16 @@ export default function EmployeeProfile() {
                 {fmt(monthlyGross)}
               </div>
             </div>
-            {emp.is_active && (
+            {emp.is_active ? (
               <button className="btn btn-outline"
                 onClick={onDeactivate}
                 style={{ color:'var(--error)', borderColor:'var(--error)' }}>
                 Deactivate
+              </button>
+            ) : (
+              <button className="btn btn-primary"
+                onClick={onReactivate}>
+                Reactivate
               </button>
             )}
           </div>
