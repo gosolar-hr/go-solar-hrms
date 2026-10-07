@@ -141,12 +141,19 @@ export default async function handler(req, res) {
     return res.status(200).json(data)
   }
 
-  // PATCH — deactivate employee (soft delete)
+  // PATCH — deactivate (soft delete) / reactivate employee
   if (req.method === 'PATCH') {
-    const { is_active } = req.body
+    const { is_active, date_of_exit, exit_reason } = req.body
+    const today = new Date().toISOString().split('T')[0]
+
     const { data, error } = await supabaseAdmin
       .from('employees')
-      .update({ is_active })
+      .update({
+        is_active,
+        date_of_exit  : is_active === false ? (date_of_exit || today) : null,
+        exit_reason   : is_active === false ? (exit_reason  || null)  : null,
+        deactivated_at: is_active === false ? new Date().toISOString() : null,
+      })
       .eq('id', id)
       .select()
       .single()
