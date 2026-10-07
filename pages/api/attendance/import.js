@@ -20,6 +20,16 @@ export default async function handler(req, res) {
   const empMap = {}, scheduleMap = {}
   employees.forEach(e => { if (e.emp_code) { empMap[e.emp_code] = e.id; scheduleMap[e.emp_code] = e.work_schedule || 'standard' } })
 
+  // Per-employee holiday overrides — days HR deliberately set to work on a holiday
+  const datesInFile = [...new Set(records.map(r => r.date))]
+  const { data: overrideRows } = await supabaseAdmin
+    .from('attendance_details')
+    .select('employee_id, date')
+    .eq('remark', 'Worked on holiday — override')
+    .in('employee_id', Object.values(empMap))
+    .in('date', datesInFile)
+  const overrideSet = new Set((overrideRows || []).map(r => `${r.employee_id}|${r.date}`))
+
   const VALID_SLABS = new Set([0, 0.2, 0.3, 0.5])
   const dayRows = []
   const importedEmpIds = new Set()
@@ -37,7 +47,7 @@ export default async function handler(req, res) {
 
     let finalStatus = status.trim().toUpperCase()
     if (isWO) finalStatus = 'W/O'
-    else if (holidayDates.has(date)) finalStatus = 'H'
+    else if (holidayDates.has(date) && !overrideSet.has(`${employee_id}|${date}`)) finalStatus = 'H'
 
     const slab = VALID_SLABS.has(parseFloat(late_slab)) ? parseFloat(late_slab) : 0
 
